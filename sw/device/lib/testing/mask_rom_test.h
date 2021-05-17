@@ -5,6 +5,8 @@
 #ifndef OPENTITAN_SW_DEVICE_LIB_TESTING_MASK_ROM_TEST_H_
 #define OPENTITAN_SW_DEVICE_LIB_TESTING_MASK_ROM_TEST_H_
 
+#include <memory>
+
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 

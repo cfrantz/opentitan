@@ -39,14 +39,12 @@ uint32_t kGettysburgDigest[] = {
 };
 
 rom_error_t hmac_test(void) {
-  hmac_t hmac;
-  hmac.base_addr = mmio_region_from_addr(TOP_EARLGREY_HMAC_BASE_ADDR);
-  RETURN_IF_ERROR(hmac_sha256_init(&hmac));
-  RETURN_IF_ERROR(hmac_sha256_update(&hmac, kGettysburgPrelude,
+  hmac_sha256_init();
+  RETURN_IF_ERROR(hmac_sha256_update(kGettysburgPrelude,
                                      sizeof(kGettysburgPrelude) - 1));
 
   hmac_digest_t digest;
-  RETURN_IF_ERROR(hmac_sha256_final(&hmac, &digest));
+  RETURN_IF_ERROR(hmac_sha256_final(&digest));
 
   const size_t len = ARRAYSIZE(digest.digest);
   for (int i = 0; i < len; i++) {

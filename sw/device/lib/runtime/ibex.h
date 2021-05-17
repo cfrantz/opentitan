@@ -6,6 +6,7 @@
 #define OPENTITAN_SW_DEVICE_LIB_RUNTIME_IBEX_H_
 
 #include <stddef.h>
+#include <stdint.h>
 
 #include "sw/device/lib/base/stdasm.h"
 

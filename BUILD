@@ -1,6 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
-load("//rules:autogen.bzl", "autogen_hjson_header")
+load("//rules:autogen.bzl", "autogen_hjson_header", "otp_image")
 
 autogen_hjson_header(
     name = "aes_regs",
@@ -177,3 +177,11 @@ autogen_hjson_header(
     ],
 )
 
+otp_image(
+    name = "otp_image_verilator",
+    src = "//hw:ip/otp_ctrl/data/otp_ctrl_img_rma.hjson",
+    deps = [
+        "//hw:ip/otp_ctrl/data/otp_ctrl_mmap.hjson",
+        "//hw:ip/lc_ctrl/data/lc_ctrl_state.hjson",
+    ],
+)

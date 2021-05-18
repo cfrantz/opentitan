@@ -23,25 +23,27 @@ def _elf_to_binary(ctx):
     cc_toolchain = find_cc_toolchain(ctx)
     outputs = []
     for src in ctx.files.srcs:
-        binary = ctx.actions.declare_file("{}.bin".format(src.basename))
+        binary = ctx.actions.declare_file("{}.{}".format(src.basename, ctx.attr.suffix))
         outputs.append(binary)
         ctx.actions.run(
             outputs = [binary],
             inputs = [src] + cc_toolchain.all_files.to_list(),
             arguments = [
-                "--output-target", "binary",
+                "--output-target", ctx.attr.format,
                 src.path,
                 binary.path,
             ],
             executable = cc_toolchain.objcopy_executable,
         )
-    return [DefaultInfo(files=depset(outputs))]
+    return [DefaultInfo(files=depset(outputs), data_runfiles=ctx.runfiles(files=outputs))]
 
 elf_to_binary = rule(
     implementation = _elf_to_binary,
     cfg = _platforms_transition,
     attrs = {
         "srcs": attr.label_list(allow_files=True),
+        "suffix": attr.string(default="bin"),
+        "format": attr.string(default="binary"),
         "platform": attr.string(default=OPENTITAN_PLATFORM),
         "_allowlist_function_transition": attr.label(
             default = "@bazel_tools//tools/allowlists/function_transition_allowlist"
@@ -66,7 +68,7 @@ def _elf_to_disassembly(ctx):
             ],
             command = "$1 --disassemble --headers --line-numbers --source $2 > $3",
         )
-    return [DefaultInfo(files=depset(outputs))]
+    return [DefaultInfo(files=depset(outputs), data_runfiles=ctx.runfiles(files=outputs))]
 
 elf_to_disassembly = rule(
     implementation = _elf_to_disassembly,
@@ -101,7 +103,7 @@ def _elf_to_scrambled(ctx):
             ],
             executable = ctx.files._tool[0].path,
         )
-    return [DefaultInfo(files=depset(outputs))]
+    return [DefaultInfo(files=depset(outputs), data_runfiles=ctx.runfiles(files=outputs))]
 
 elf_to_scrambled = rule(
     implementation = _elf_to_scrambled,
@@ -129,6 +131,23 @@ def opentitan_binary(
     output_disassembly = True,
     output_scrambled = False,
     **kwargs):
+    """A helper macro for generating OpenTitan binary artifacts.
+
+    This macro is mostly a wrapper around cc_binary, but creates artifacts
+    for each of the keys in `per_device_deps`.  The actual artifacts
+    created are an ELF file, a BIN file, the disassembly and the scrambled
+    ROM image.  Each of these output targets performs a bazel transition to
+    the RV32I toolchain to build the target under the correct compiler.
+
+    Args:
+      @param name: The name of this rule.
+      @param platform: The target platform for the artifacts.
+      @param per_device_deps: The deps for each of the execution environments.
+      @param output_bin: Whether or not to emit a BIN file.
+      @param output_disassembly: Whether or not to emit a disassembly file.
+      @param output_scrambled: Whether or not to emit a SCR file.
+      @param **kwargs: Arguments to forward to `cc_binary`.
+    """
 
     deps = kwargs.pop("deps", [])
     targets = []
@@ -140,6 +159,14 @@ def opentitan_binary(
             target_compatible_with = _targets_compatible_with[platform],
             **kwargs,
         )
+        targets.append(":" + devname + "_elf")
+        elf_to_binary(
+            name = devname + "_elf",
+            srcs = [devname],
+            format = "elf32-little",
+            suffix = "elf",
+            platform = platform,
+        )
 
         if output_bin:
             targets.append(":" + devname + "_bin")
@@ -148,6 +175,7 @@ def opentitan_binary(
                 srcs = [devname],
                 platform = platform,
             )
+
         if output_disassembly:
             targets.append(":" + devname + "_dis")
             elf_to_disassembly(
@@ -166,4 +194,52 @@ def opentitan_binary(
     native.filegroup(
         name = name,
         srcs = targets,
+    )
+
+def opentitan_functest(
+    name,
+    platform = OPENTITAN_PLATFORM,
+    per_device_deps = {
+        "verilator": [ "//sw/device/lib/arch:sim_verilator" ],
+    },
+    **kwargs):
+    """A helper macro for generating OpenTitan functional tests.
+
+    This macro is mostly a wrapper around opentitan_binary, but creates
+    testing artifacts for each of the keys in `per_device_deps`.
+    The testing artifacts are then given to an `sh_test` rule which
+    coordinates performing the test under verilator by way of opentitantool.
+
+    Args:
+      @param name: The name of this rule.
+      @param platform: The target platform for the artifacts.
+      @param per_device_deps: The deps for each of the execution environments.
+      @param **kwargs: Arguments to forward to `opentitan_binary`.
+    """
+
+    opentitan_binary(
+        name = name + "_prog",
+        platform = platform,
+        per_device_deps = per_device_deps,
+        output_bin = False,
+        output_disassembly = False,
+        **kwargs)
+
+    native.sh_test(
+        name = name,
+        srcs = ["//util:opentitantool_test_runner.sh"],
+        args = [
+            "--tool=$(location //sw/host/opentitantool)",
+            "--verilator-bin=$(location //prebuilt:Vchip_earlgrey_verilator)",
+            "--verilator-rom=$(location //sw/device/boot_rom:boot_rom_verilator_scr)",
+            "--verilator-flash=$(location {}_prog_verilator_elf)".format(name),
+            "--verilator-otp=$(location //:otp_image_verilator)",
+        ],
+        data = [
+            "//sw/device/boot_rom:boot_rom_verilator_scr",
+            "{}_prog_verilator_elf".format(name),
+            "//sw/host/opentitantool",
+            "//prebuilt:Vchip_earlgrey_verilator",
+            "//:otp_image_verilator",
+        ],
     )

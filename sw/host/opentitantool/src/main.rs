@@ -1,10 +1,16 @@
+extern crate anyhow;
 extern crate env_logger;
+extern crate erased_serde;
 extern crate log;
+extern crate nix;
 extern crate opentitanlib;
 extern crate opentitantool_derive;
+extern crate raw_tty;
+extern crate regex;
 extern crate serde;
 extern crate serde_json;
 extern crate structopt;
+extern crate thiserror;
 
 use anyhow::Result;
 use log::LevelFilter;

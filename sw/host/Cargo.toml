@@ -1,0 +1,14 @@
+[workspace]
+members = [
+    "opentitanlib",
+    "opentitantool",
+]
+
+[workspace.metadata.raze]
+workspace_path = "//third_party/cargo"
+experimental_api = true
+render_package_aliases = false
+targets = [
+    "x86_64-unknown-linux-gnu",
+]
+genmode = "Remote"

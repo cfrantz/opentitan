@@ -22,7 +22,8 @@
 static uint32_t subtract_modulus(const sigverify_rsa_key_t *key,
                                  sigverify_rsa_buffer_t *a) {
   uint32_t borrow = 0;
-  for (size_t i = 0; i < ARRAYSIZE(a->data); ++i) {
+  size_t len = key->n.data[64] == 0 ? 64 : 96;
+  for (size_t i = 0; i < len; ++i) {
     uint32_t temp = a->data[i] - borrow;
     // We borrow if either the above or the below subtraction wraps around.
     // Note: borrow can only be 0 or 1.
@@ -59,9 +60,9 @@ static bool greater_equal_modulus(const sigverify_rsa_key_t *key,
  * @param[in,out] a Buffer that holds `a`, little-endian.
  * @return Most significant bit of the result.
  */
-static uint32_t shift_left(sigverify_rsa_buffer_t *a) {
-  const uint32_t msb = a->data[ARRAYSIZE(a->data) - 1] >> 31;
-  for (size_t i = ARRAYSIZE(a->data) - 1; i > 0; --i) {
+static uint32_t shift_left(sigverify_rsa_buffer_t *a, size_t len) {
+  const uint32_t msb = a->data[len - 1] >> 31;
+  for (size_t i = len - 1; i > 0; --i) {
     a->data[i] = (a->data[i] << 1) | (a->data[i - 1] >> 31);
   }
   a->data[0] <<= 1;
@@ -89,8 +90,9 @@ static void mont_mul(const sigverify_rsa_key_t *key,
                      const sigverify_rsa_buffer_t *y,
                      sigverify_rsa_buffer_t *result) {
   memset(result->data, 0, sizeof(result->data));
+  size_t len = key->n.data[64] == 0 ? 64 : 96;
 
-  for (size_t i = 0; i < ARRAYSIZE(x->data); ++i) {
+  for (size_t i = 0; i < len; ++i) {
     // The loop below reads one word ahead of writes to avoid a separate loop
     // for the division by `b` in step 2.2 of the algorithm. Thus, `acc0` and
     // `acc1` are initialized here before the loop. `acc0` holds the sum of
@@ -107,13 +109,13 @@ static void mont_mul(const sigverify_rsa_key_t *key,
     uint64_t acc1 = (uint64_t)u_i * key->n.data[0] + (uint32_t)acc0;
 
     // Process the i^th digit of `x`, i.e. `x[i]`.
-    for (size_t j = 1; j < ARRAYSIZE(result->data); ++j) {
+    for (size_t j = 1; j < len; ++j) {
       acc0 = (uint64_t)x->data[i] * y->data[j] + result->data[j] + (acc0 >> 32);
       acc1 = (uint64_t)u_i * key->n.data[j] + (uint32_t)acc0 + (acc1 >> 32);
       result->data[j - 1] = (uint32_t)acc1;
     }
     acc0 = (acc0 >> 32) + (acc1 >> 32);
-    result->data[ARRAYSIZE(result->data) - 1] = (uint32_t)acc0;
+    result->data[len - 1] = (uint32_t)acc0;
 
     // The intermediate result of this algorithm before the check below is
     // bounded by R + n (Eq. (4) in Montgomery Arithmetic from a Software
@@ -140,6 +142,7 @@ static void calc_r_square(const sigverify_rsa_key_t *key,
                           sigverify_rsa_buffer_t *result) {
   sigverify_rsa_buffer_t buf;
   memset(buf.data, 0, sizeof(result->data));
+  size_t len = key->n.data[64] == 0 ? 64 : 96;
   // This subtraction sets buf = -n mod R = R - n, which is equivalent to R
   // modulo n and ensures that `buf` fits in `kSigVerifyRsaNumWords` going
   // into the loop.
@@ -147,8 +150,8 @@ static void calc_r_square(const sigverify_rsa_key_t *key,
 
   // Compute (2^96 * R) mod n.
   // Each run of the loop doubles buf and reduces modulo n.
-  for (size_t i = 0; i < 96; ++i) {
-    uint32_t msb = shift_left(&buf);
+  for (size_t i = 0; i < len; ++i) {
+    uint32_t msb = shift_left(&buf, len);
     // Reduce until buf < n. Doing this at every iteration minimizes the
     // total number of subtractions that we need to perform.
     while (msb > 0 || greater_equal_modulus(key, &buf)) {

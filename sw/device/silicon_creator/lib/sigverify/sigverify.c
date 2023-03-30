@@ -105,6 +105,23 @@ static rom_error_t sigverify_encoded_message_check(
   // correct, garbage otherwise.
   uint32_t *enc_msg_ptr = enc_msg->data;
   size_t i = 0;
+
+  // FIXME: If the decrypted message looks like it consistent with RSA-2K
+  // padding, punk the padding to look like RSA-3K padding.
+  if (enc_msg_ptr[63] == 0x0001ffff) {
+    uint32_t zero = 0;
+    for (i = 64; i < 96; ++i) {
+      zero |= enc_msg_ptr[i];
+    }
+    if (zero == 0) {
+      for (i = 63; i < 95; ++i) {
+        enc_msg_ptr[i] = 0xFFFFFFFF;
+      }
+      enc_msg_ptr[i] = 0x0001ffff;
+    }
+  }
+  i = 0;
+
   for (size_t j = 0; launder32(j) < kHmacDigestNumWords; ++j, ++i) {
     enc_msg_ptr[i] ^= act_digest->digest[j] ^ kSigverifyShares[i];
   }

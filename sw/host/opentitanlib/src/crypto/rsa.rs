@@ -25,7 +25,7 @@ const SIGNATURE_BIT_LEN: usize = 3072;
 const RR_BIT_LEN: usize = 3072;
 const OTBN_BITS: usize = 256;
 
-fixed_size_bigint!(Modulus, MODULUS_BIT_LEN);
+fixed_size_bigint!(Modulus, at_most MODULUS_BIT_LEN);
 fixed_size_bigint!(Exponent, EXPONENT_BIT_LEN);
 fixed_size_bigint!(Signature, at_most SIGNATURE_BIT_LEN);
 fixed_size_bigint!(RR, at_most RR_BIT_LEN);
@@ -59,7 +59,7 @@ pub enum Error {
 
 /// Ensure the components of `key` have the correct bit length.
 fn validate_key(key: impl rsa::PublicKeyParts) -> Result<()> {
-    if key.n().bits() != MODULUS_BIT_LEN || key.e() != &BigUint::from(65537u32) {
+    if !(key.n().bits() >= 2048 && key.n().bits() <= MODULUS_BIT_LEN) || key.e() != &BigUint::from(65537u32) {
         bail!(Error::InvalidPublicKey)
     } else {
         Ok(())

@@ -70,6 +70,7 @@ rust_library(
         "src/bootstrap/mod.rs",
         "src/bootstrap/primitive.rs",
         "src/bootstrap/rescue.rs",
+        "src/bootstrap/xmodem.rs",
         "src/chip/alert.rs",
         "src/chip/autogen/mod.rs",
         "src/chip/boolean.rs",

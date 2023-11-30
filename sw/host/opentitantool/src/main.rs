@@ -58,6 +58,9 @@ enum RootCommandHierarchy {
     #[command(subcommand)]
     Certificate(command::certificate::CertificateCommand),
 
+    // Not flattened because `Xmodem` is a leaf command.
+    Xmodem(command::xmodem::XmodemCommand),
+
     // Flattened because `Greetings` is a subcommand hierarchy.
     #[cfg(feature = "demo_commands")]
     #[command(subcommand)]

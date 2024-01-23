@@ -36,13 +36,15 @@ int_flag(
 string_flag(
     name = "lc_seed",
     # Default must match value in hw/ip/lc_ctrl/data/lc_ctrl.hjson.
-    build_setting_default = "40182201019264397688411770949626922549663256047001778394918990008320537410392",
+    #build_setting_default = "40182201019264397688411770949626922549663256047001778394918990008320537410392",
+    build_setting_default = "10167336684108184581",
 )
 
 string_flag(
     name = "otp_seed",
     # Default must match value in hw/ip/otp_ctrl/data/otp_ctrl_mmap.hjson.
-    build_setting_default = "36021179872380457113239299468132194022238108125576166239904535336103582949069",
+    #build_setting_default = "36021179872380457113239299468132194022238108125576166239904535336103582949069",
+    build_setting_default = "10556718629619452145",
 )
 
 string_flag(

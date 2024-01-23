@@ -127,6 +127,8 @@ nist_cavp_repos()
 # Bitstreams from https://storage.googleapis.com/opentitan-bitstreams/
 load("//rules:bitstreams.bzl", "bitstreams_repo")
 bitstreams_repo(name = "bitstreams")
+load("//third_party/chip:repos.bzl", "chip_repos")
+chip_repos(earlgrey_es = "../es_bitstreams")
 
 # Setup for linking in external test hooks for both secure/non-secure
 # manufacturer domains.

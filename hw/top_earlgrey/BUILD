@@ -17,6 +17,28 @@ load(
 
 package(default_visibility = ["//visibility:public"])
 
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+
+bool_flag(
+    name = "use_es_bitstream",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "es_bitstream",
+    flag_values = {
+        ":use_es_bitstream": "true",
+    },
+)
+
+config_setting(
+    name = "es_bitstream_testing",
+    flag_values = {
+        ":use_es_bitstream": "true",
+        "//signing:token": "//signing/tokens:local",
+    },
+)
+
 autogen_hjson_header(
     name = "rv_plic_regs",
     srcs = [
@@ -39,6 +61,11 @@ filegroup(
         "//hw/top_earlgrey/ip:all_files",
         "//hw/top_earlgrey/sw:all_files",
     ],
+)
+
+filegroup(
+    name = "none",
+    srcs = ["//hw/bitstream/universal:none"],
 )
 
 ###########################################################################
@@ -69,17 +96,29 @@ fpga_cw310(
         "//conditions:default": [],
     }),
     base = ":fpga_cw310",
-    base_bitstream = "//hw/bitstream:bitstream",
+    base_bitstream = select({
+        ":es_bitstream": "@earlgrey_es_bitstreams//cw310:test_rom",
+        "//conditions:default": "//hw/bitstream:bitstream",
+    }),
     exec_env = "fpga_cw310_test_rom",
     otp = "//hw/ip/otp_ctrl/data:img_rma",
-    otp_mmi = "//hw/bitstream:otp_mmi",
+    otp_mmi = select({
+        ":es_bitstream": "@earlgrey_es_bitstreams//cw310:otp_mmi",
+        "//conditions:default": "//hw/bitstream:otp_mmi",
+    }),
     param = {
         "interface": "cw310",
         "exit_success": DEFAULT_TEST_SUCCESS_MSG,
         "exit_failure": DEFAULT_TEST_FAILURE_MSG,
     },
-    rom = "//sw/device/lib/testing/test_rom:test_rom",
-    rom_mmi = "//hw/bitstream:rom_mmi",
+    rom = select({
+        ":es_bitstream": ":none",
+        "//conditions:default": "//sw/device/lib/testing/test_rom:test_rom",
+    }),
+    rom_mmi = select({
+        ":es_bitstream": "@earlgrey_es_bitstreams//cw310:rom_mmi",
+        "//conditions:default": "//hw/bitstream:rom_mmi",
+    }),
     test_cmd = """
         --exec="transport init"
         --exec="fpga load-bitstream {bitstream}"
@@ -93,9 +132,17 @@ fpga_cw310(
     name = "fpga_cw310_rom_with_fake_keys",
     testonly = True,
     base = ":fpga_cw310_test_rom",
+    base_bitstream = select({
+        ":es_bitstream_testing": "@earlgrey_es_bitstreams//cw310:rom_with_fake_keys",
+        ":es_bitstream": "@earlgrey_es_bitstreams//cw310:rom_with_fake_keys",
+        #":es_bitstream": "@earlgrey_es_bitstreams//cw310:rom_with_real_keys",
+        "//conditions:default": "//hw/bitstream:bitstream",
+    }),
     exec_env = "fpga_cw310_rom_with_fake_keys",
     manifest = "//sw/device/silicon_creator/rom_ext:manifest_standard",
     rom = select({
+        ":es_bitstream_testing": ":none",
+        ":es_bitstream": ":none",
         "//signing:test_keys": "//sw/device/silicon_creator/rom:rom_with_fake_keys",
         "//conditions:default": "//sw/device/silicon_creator/rom:rom_with_real_keys",
     }),

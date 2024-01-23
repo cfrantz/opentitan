@@ -1,0 +1,37 @@
+# Copyright lowRISC contributors.
+# Licensed under the Apache License, Version 2.0, see LICENSE for details.
+# SPDX-License-Identifier: Apache-2.0
+
+exports_files(glob(["**"]))
+
+filegroup(
+    name = "cw310_bitstream",
+    srcs = ["lowrisc_systems_chip_earlgrey_cw310_0.1.bit.orig"],
+)
+
+filegroup(
+    name = "cw310_rom_mmi",
+    srcs = ["rom.mmi"],
+)
+
+filegroup(
+    name = "cw310_otp_mmi",
+    srcs = ["otp.mmi"],
+)
+
+filegroup(
+    name = "hyper310_bitstream",
+    srcs = ["chip_earlgrey_cw310_hyperdebug/lowrisc_systems_chip_earlgrey_cw310_hyperdebug_0.1.bit"],
+)
+
+filegroup(
+    name = "hyper310_rom_mmi",
+    srcs = ["chip_earlgrey_cw310_hyperdebug/rom.mmi"],
+)
+
+filegroup(
+    name = "hyper310_otp_mmi",
+    srcs = ["chip_earlgrey_cw310_hyperdebug/otp.mmi"],
+)
+
+

@@ -105,6 +105,7 @@ def _bitstream_splice_impl(ctx):
 
     exec_env = ctx.attr.exec_env[ExecEnvInfo]
     src = ctx.file.src if ctx.file.src else exec_env.base_bitstream
+    print("base", src)
 
     # Splice in a ROM image if we have one either in attrs or the exec_env.
     if not ctx.attr.rom or ctx.attr.rom.label.name == "none":
@@ -112,6 +113,7 @@ def _bitstream_splice_impl(ctx):
     else:
         rom = ctx.attr.rom
     if rom and rom.label.name != "none":
+        print("splice rom", rom);
         rom = get_one_binary_file(rom, field = "rom", providers = [exec_env.provider])
         mem = gen_vivado_mem_file(
             ctx = ctx,
@@ -135,6 +137,7 @@ def _bitstream_splice_impl(ctx):
     else:
         otp = ctx.file.otp
     if otp:
+        print("splice otp", otp);
         mem = gen_vivado_mem_file(
             ctx = ctx,
             name = "{}-otp".format(ctx.label.name),

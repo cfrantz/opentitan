@@ -72,10 +72,10 @@ size_t uart_read(uint8_t *data, size_t len, uint32_t timeout_ms);
  * UART break must already be asserted upon entry to this function and must
  * remain asserted for the duration of `timeout_ms`.
  *
- * @param timeout_ms The time for which break must be asserted.
+ * @param timeout_us The time for which break must be asserted.
  * @return True if break is asserted.
  */
-bool uart_break_detect(uint32_t timeout_ms);
+bool uart_break_detect(uint32_t timeout_us);
 
 /**
  * Sink a buffer to the UART.

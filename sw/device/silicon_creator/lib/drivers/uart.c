@@ -52,8 +52,13 @@ void uart_init(uint32_t precalculated_nco) {
 }
 
 void uart_enable_receiver(void) {
-  uint32_t reg =
-      abs_mmio_read32(TOP_EARLGREY_UART0_BASE_ADDR + UART_CTRL_REG_OFFSET);
+  // Clear the receive FIFO.
+  uint32_t reg = 0;
+  reg = bitfield_bit32_write(reg, UART_FIFO_CTRL_RXRST_BIT, true);
+  abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_FIFO_CTRL_REG_OFFSET,
+                   reg);
+  // Enable the receiver.
+  reg = abs_mmio_read32(TOP_EARLGREY_UART0_BASE_ADDR + UART_CTRL_REG_OFFSET);
   reg = bitfield_bit32_write(reg, UART_CTRL_RX_BIT, true);
   abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_CTRL_REG_OFFSET, reg);
 }
@@ -128,9 +133,9 @@ size_t uart_read(uint8_t *data, size_t len, uint32_t timeout_ms) {
   return n;
 }
 
-bool uart_break_detect(uint32_t timeout_ms) {
+bool uart_break_detect(uint32_t timeout_us) {
   uint64_t time = ibex_mcycle();
-  uint64_t deadline = time + to_cpu_cycles(timeout_ms * 1000);
+  uint64_t deadline = time + to_cpu_cycles(timeout_us);
   while (time < deadline) {
     uint32_t val =
         abs_mmio_read32(TOP_EARLGREY_UART0_BASE_ADDR + UART_VAL_REG_OFFSET);

@@ -16,6 +16,13 @@
 void xmodem_recv_start(void);
 
 /**
+ * Acknowledge an Xmodem frame.
+ *
+ * @param ack Whether to ACK (true) or NAK (false).
+ */
+void xmodem_ack(bool ack);
+
+/**
  * Receive a frame using Xmodem-CRC
  *
  * @param frame The frame number expected (start at 1).

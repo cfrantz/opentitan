@@ -14,6 +14,8 @@
 #include "sw/device/silicon_creator/lib/drivers/uart.h"
 #include "sw/device/silicon_creator/lib/epmp_defs.h"
 
+static const char kHexTable[16] = "0123456789abcdef";
+
 static void print_integer(unsigned value, bool is_signed) {
   char buf[12];
   char *b = buf + sizeof(buf);
@@ -51,6 +53,18 @@ void dbg_printf(const char *format, ...) {
         uart_putchar((char)ch);
         break;
       }
+      case 'C': {
+        uint8_t ch = (uint8_t)va_arg(args, int);
+        if (ch >= 32 && ch < 127) {
+            uart_putchar((char)ch);
+        } else {
+            uart_putchar('\\');
+            uart_putchar('x');
+            uart_putchar(kHexTable[ch >> 4]);
+            uart_putchar(kHexTable[ch & 15]);
+        }
+        break;
+      }
       case 's': {
         // Print a null-terminated string.
         const char *str = va_arg(args, const char *);
@@ -70,7 +84,6 @@ void dbg_printf(const char *format, ...) {
         OT_FALLTHROUGH_INTENDED;
       case 'x': {
         // Print an `unsigned int` in hexadecimal.
-        static const char kHexTable[16] = "0123456789abcdef";
         unsigned int v = va_arg(args, unsigned int);
         for (int i = 0; i < sizeof(v) * 2; ++i) {
           int shift = sizeof(v) * 8 - 4;

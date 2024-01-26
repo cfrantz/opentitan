@@ -39,7 +39,7 @@
 #include "sw/device/silicon_creator/lib/otbn_boot_services.h"
 #include "sw/device/silicon_creator/lib/shutdown.h"
 #include "sw/device/silicon_creator/lib/sigverify/sigverify.h"
-#include "sw/device/silicon_creator/rom_ext/bootstrap.h"
+#include "sw/device/silicon_creator/rom_ext/rescue.h"
 #include "sw/device/silicon_creator/rom_ext/rom_ext_boot_policy.h"
 #include "sw/device/silicon_creator/rom_ext/rom_ext_boot_policy_ptrs.h"
 #include "sw/device/silicon_creator/rom_ext/rom_ext_epmp.h"
@@ -47,6 +47,7 @@
 
 #include "hw/top_earlgrey/sw/autogen/top_earlgrey.h"  // Generated.
 #include "sram_ctrl_regs.h"
+
 
 // Declaration for the ROM_EXT manifest start address, populated by the linker
 extern char _rom_ext_start_address[];
@@ -618,13 +619,13 @@ void rom_ext_main(void) {
   rom_ext_check_rom_expectations();
   SHUTDOWN_IF_ERROR(rom_ext_init());
   dbg_printf("Starting ROM_EXT\r\n");
-  rom_error_t error = rom_ext_try_boot();
-  // If the boot failed, enter bootstrap if it's enabled.
-  if (launder32(error) != kErrorOk &&
-      launder32(rom_ext_bootstrap_enabled()) == kHardenedBoolTrue) {
-    HARDENED_CHECK_NE(error, kErrorOk);
-    HARDENED_CHECK_EQ(rom_ext_bootstrap_enabled(), kHardenedBoolTrue);
-    shutdown_finalize(rom_ext_bootstrap());
+  rom_error_t error;
+  if (uart_break_detect(kRescueDetectTime)) {
+      dbg_printf("rescue: remember to clear break\r\n");
+      uart_enable_receiver();
+      error = rescue_protocol();
+  } else {
+    error = rom_ext_try_boot();
   }
   shutdown_finalize(error);
 }

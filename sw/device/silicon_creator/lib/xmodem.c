@@ -45,7 +45,7 @@ static uint16_t crc16(uint16_t crc, const void *buf, size_t len) {
  * Calculate an XModem CRC16 for a to-be-transmitted block.
  */
 static uint16_t crc16_block(const void *buf, size_t len, size_t block_sz) {
-  uint32_t crc = crc16(0, buf, len);
+  uint16_t crc = crc16(0, buf, len);
   uint8_t pad = 0;
   for (; len < block_sz; ++len) {
     crc = crc16(crc, &pad, 1);
@@ -54,6 +54,8 @@ static uint16_t crc16_block(const void *buf, size_t len, size_t block_sz) {
 }
 
 void xmodem_recv_start(void) { uart_putchar(kXModemCrc16); }
+
+void xmodem_ack(bool ack) { uart_putchar(ack ? kXModemAck : kXModemNak); }
 
 rom_error_t xmodem_recv_frame(uint32_t frame, uint8_t *data, size_t *rxlen,
                               uint8_t *unknown_rx) {

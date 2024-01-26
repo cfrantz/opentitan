@@ -113,6 +113,7 @@
  * We expect strong pull-ups on SW_STRAP_2_PERIPH and SW_STRAP_1_PERIPH, and
  * strong pull-down on SW_STRAP_0_PERIPH, i.e. `11_11_00`.
  */
+#define SW_STRAP_RMA_ENTRY_VALUE 0x3c
 #define SW_STRAP_RMA_ENTRY                               \
   ((1 << SW_STRAP_2_PERIPH) | (1 << SW_STRAP_1_PERIPH) | \
    (0 << SW_STRAP_0_PERIPH))
@@ -122,8 +123,21 @@
  *
  * We expect strong pull-ups on all software strap pins, i.e. `11_11_11`.
  */
+#define SW_STRAP_BOOTSTRAP_VALUE 0x3f
 #define SW_STRAP_BOOTSTRAP                               \
   ((1 << SW_STRAP_2_PERIPH) | (1 << SW_STRAP_1_PERIPH) | \
    (1 << SW_STRAP_0_PERIPH))
+
+/**
+ * ROM_EXT rescue mode strap value.
+ *
+ * We expect a strong pull-up, on SW_STRAP_2_PERIPH and strong pull-downs
+ * on SW_STRAP_1_PERIPH and SW_STRAP_0_PERIPH, i.e. `11_00_00`.
+ *
+ */
+#define SW_STRAP_RESCUE_VALUE 0x30
+#define SW_STRAP_RESCUE                                  \
+  ((1 << SW_STRAP_2_PERIPH) | (0 << SW_STRAP_1_PERIPH) | \
+   (0 << SW_STRAP_0_PERIPH))
 
 #endif  // OPENTITAN_SW_DEVICE_SILICON_CREATOR_LIB_BASE_CHIP_H_

@@ -23,6 +23,13 @@ extern "C" {
  */
 void pinmux_init(void);
 
+/**
+ * Read the SW_STRAP value considering weak/string pull resistors.
+ *
+ * @return The strapping value 0-63.
+ */
+uint32_t pinmux_read_straps(void);
+
 #ifdef __cplusplus
 }
 #endif

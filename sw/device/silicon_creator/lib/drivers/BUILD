@@ -243,6 +243,7 @@ cc_library(
         "//hw/ip/rv_core_ibex/data:rv_core_ibex_regs",
         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
         "//sw/device/lib/base:abs_mmio",
+        "//sw/device/lib/base:csr",
         "//sw/device/lib/base:macros",
         "//sw/device/lib/runtime:hart",
         "//sw/device/silicon_creator/lib/base:sec_mmio",
@@ -466,6 +467,7 @@ cc_library(
     srcs = ["pinmux.c"],
     hdrs = ["pinmux.h"],
     deps = [
+        "//hw/ip/gpio/data:gpio_regs",
         "//hw/ip/otp_ctrl/data:otp_ctrl_regs",
         "//hw/top_earlgrey/ip/pinmux/data/autogen:pinmux_regs",
         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
@@ -670,6 +672,7 @@ cc_library(
     srcs = ["uart.c"],
     hdrs = ["uart.h"],
     deps = [
+        ":ibex",
         "//hw/ip/uart/data:uart_regs",
         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
         "//sw/device/lib/arch:device",

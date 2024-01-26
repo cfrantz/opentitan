@@ -507,6 +507,17 @@ cc_library(
 )
 
 cc_library(
+    name = "xmodem",
+    srcs = ["xmodem.c"],
+    hdrs = ["xmodem.h"],
+    deps = [
+        ":error",
+        "//sw/device/lib/base:hardened",
+        "//sw/device/silicon_creator/lib/drivers:uart",
+    ],
+)
+
+cc_library(
     name = "otbn_boot_services",
     srcs = ["otbn_boot_services.c"],
     hdrs = ["otbn_boot_services.h"],

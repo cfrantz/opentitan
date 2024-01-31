@@ -1,6 +1,6 @@
 use crate::io::uart::Uart;
 use anyhow::Result;
-use std::io::Read;
+use std::io::{Read, Write};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -157,6 +157,74 @@ impl Xmodem {
         uart.read(std::slice::from_mut(&mut ch))?;
         if ch != Self::ACK {
             log::info!("Expected ACK. Got {ch:#x}.");
+        }
+        Ok(())
+    }
+
+    pub fn receive(&self, uart: &dyn Uart, data: &mut impl Write) -> Result<()> {
+        // Send the byte indicating the protocol we want (Xmodem-CRC).
+        uart.write(&[Self::CRC])?;
+
+        let mut block = 1u8;
+        let mut errors = 0usize;
+        loop {
+            // The first byte of the packet is the packet type which indicates the block size.
+            let mut byte = 0u8;
+            uart.read(std::slice::from_mut(&mut byte))?;
+            let block_len = match byte {
+                Self::SOH => 128,
+                Self::STX => 1024,
+                Self::EOF => {
+                    // End of file.  Send an ACK.
+                    uart.write(&[Self::ACK])?;
+                    break;
+                },
+                _ => {
+                    return Err(XmodemError::UnsupportedMode(format!(
+                            "bad start of packet: {byte:?}")).into());
+                }
+            };
+
+            // The next two bytes are the block number and its complement.
+            let mut bnum = 0u8;
+            let mut bcom = 0u8;
+            uart.read(std::slice::from_mut(&mut bnum))?;
+            uart.read(std::slice::from_mut(&mut bcom))?;
+            let cancel = block != bnum || bnum != 255-bcom;
+
+            // The next `block_len` bytes are the packet itself.
+            let mut buffer = Vec::new();
+            buffer.resize(block_len, 0);
+            let mut total = 0;
+            while total < block_len {
+                let n = uart.read(&mut buffer[total..])?;
+                total += n;
+            }
+
+            // The final two bytes are the CRC16.
+            let mut crc1 = 0u8;
+            let mut crc2 = 0u8;
+            uart.read(std::slice::from_mut(&mut crc1))?;
+            uart.read(std::slice::from_mut(&mut crc2))?;
+            let crc = u16::from_be_bytes([crc1, crc2]);
+
+            // If we should cancel, do it now.
+            if cancel {
+                uart.write(&[Self::CAN, Self::CAN])?;
+                return Err(XmodemError::Cancelled.into());
+            }
+            if Self::crc16(&buffer) == crc {
+                // CRC was good; send an ACK and keep the data.
+                uart.write(&[Self::ACK])?;
+                data.write(&buffer)?;
+                block = block.wrapping_add(1);
+            } else {
+                uart.write(&[Self::NAK])?;
+                errors+=1;
+            }
+            if errors > self.max_errors {
+                return Err(XmodemError::ExhaustedRetries(errors).into());
+            }
         }
         Ok(())
     }

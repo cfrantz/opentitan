@@ -209,7 +209,7 @@ static rom_error_t xmodem_send_data(const void *data, size_t len,
 }
 
 rom_error_t xmodem_send(const void *data, size_t len) {
-  HARDENED_RETURN_IF_ERROR(xmodem_send_start(kXModemSendRetries));
+  HARDENED_RETURN_IF_ERROR(xmodem_send_start(30));
   HARDENED_RETURN_IF_ERROR(xmodem_send_data(data, len, kXModemMaxErrors));
   HARDENED_RETURN_IF_ERROR(xmodem_send_finish());
   return kErrorOk;

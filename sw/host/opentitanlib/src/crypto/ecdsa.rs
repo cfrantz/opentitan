@@ -151,6 +151,17 @@ impl EcdsaPublicKey {
         Ok(Self { key })
     }
 
+    pub fn to_raw(&self) -> EcdsaRawPublicKey {
+        let point = self.key.to_encoded_point(false);
+        // Since opentitan is a little-endian machine, we reverse the byte
+        // order of the X and Y values.
+        let mut x = point.x().unwrap().as_slice().to_vec();
+        let mut y = point.y().unwrap().as_slice().to_vec();
+        x.reverse();
+        y.reverse();
+        EcdsaRawPublicKey { x, y }
+    }
+
     pub fn verify(&self, digest: &Sha256Digest, signature: &EcdsaRawSignature) -> Result<()> {
         let mut bytes = signature.to_vec()?;
         let half = bytes.len() / 2;

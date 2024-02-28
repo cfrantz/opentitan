@@ -44,6 +44,8 @@
 #include "sw/device/silicon_creator/rom_ext/rom_ext_boot_policy_ptrs.h"
 #include "sw/device/silicon_creator/rom_ext/rom_ext_epmp.h"
 #include "sw/device/silicon_creator/rom_ext/sigverify_keys.h"
+#include "sw/device/silicon_creator/lib/ownership/owner.h"
+#include "sw/device/silicon_creator/lib/ownership/ownership_unlock.h"
 
 #include "hw/top_earlgrey/sw/autogen/top_earlgrey.h"  // Generated.
 #include "sram_ctrl_regs.h"
@@ -567,6 +569,11 @@ static rom_error_t rom_ext_try_boot(void) {
         HARDENED_CHECK_EQ(msg_type, kBootSvcMinBl0SecVerReqType);
         HARDENED_RETURN_IF_ERROR(
             boot_svc_min_sec_ver_handler(&boot_svc_msg, &boot_data));
+        break;
+      case kBootSvcOwnershipUnlockReqType:
+        HARDENED_CHECK_EQ(msg_type, kBootSvcOwnershipUnlockReqType);
+        HARDENED_RETURN_IF_ERROR(
+            ownership_unlock_process(&boot_svc_msg, &boot_data));
         break;
       case kBootSvcNextBl0SlotResType:
         // For response messages left in ret-ram we do nothing.

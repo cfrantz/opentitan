@@ -647,7 +647,7 @@ static rom_error_t rom_ext_real_main(void) {
   // Handle any pending boot_svc commands.
   error = handle_boot_svc(&boot_data);
   if (error == kErrorWriteBootdataThenReboot) {
-    boot_data_write(&boot_data);
+    HARDENED_RETURN_IF_ERROR(boot_data_write(&boot_data));
   }
   HARDENED_RETURN_IF_ERROR(error);
   // Re-sync the boot_log entries that could be changed by boot services.

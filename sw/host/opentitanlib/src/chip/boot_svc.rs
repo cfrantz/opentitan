@@ -10,9 +10,9 @@ use sha2::{Digest, Sha256};
 use std::convert::TryFrom;
 use std::io::{Read, Write};
 
+use super::ChipDataError;
 use crate::chip::boolean::HardenedBool;
 use crate::crypto::ecdsa::{EcdsaPrivateKey, EcdsaPublicKey, EcdsaRawPublicKey, EcdsaRawSignature};
-use crate::rescue::RescueError;
 use crate::with_unknown;
 
 with_unknown! {
@@ -45,92 +45,93 @@ with_unknown! {
         NextBl0SlotResponse = 0x657051be,
         PrimaryBl0SlotRequest = 0x3d6c47b8,
         PrimaryBl0SlotResponse = 0xf2a4a609,
-        UnlockOwnershipRequest = 0x51524e55,
-        UnlockOwnershipResponse = 0x53524e55,
-        ActivateOwnerRequest = 0x51524f41,
-        ActivateOwnerResponse = 0x53524f41,
+        OwnershipUnlockRequest = 0x51524e55,
+        OwnershipUnlockResponse = 0x53524e55,
+        OwnershipActivateRequest = 0x51524f41,
+        OwnershipActivateResponse = 0x53524f41,
     }
 }
 
 #[derive(Debug, Default, Serialize, Annotate)]
 pub struct Header {
     #[annotate(format=hex)]
-    digest: [u32; 8],
+    pub digest: [u32; 8],
     #[annotate(format=hex)]
-    identifier: u32,
-    kind: BootSvcKind,
-    length: u32,
+    pub identifier: u32,
+    pub kind: BootSvcKind,
+    pub length: u32,
 }
 
 #[derive(Debug, Default, Serialize, Annotate)]
 pub struct Empty {
     #[annotate(format=hex)]
-    payload: Vec<u32>,
+    pub payload: Vec<u32>,
 }
 
 #[derive(Debug, Default, Serialize, Annotate)]
 pub struct MinBl0SecVerRequest {
-    ver: u32,
+    pub ver: u32,
 }
 
 #[derive(Debug, Default, Serialize, Annotate)]
 pub struct MinBl0SecVerResponse {
-    ver: u32,
-    status: u32,
+    pub ver: u32,
+    pub status: u32,
 }
 
 #[derive(Debug, Default, Serialize, Annotate)]
 pub struct NextBl0SlotRequest {
-    next_bl0_slot: NextBootBl0,
+    pub next_bl0_slot: NextBootBl0,
 }
 
 #[derive(Debug, Default, Serialize, Annotate)]
 pub struct NextBl0SlotResponse {
-    status: u32,
+    pub status: u32,
 }
 
 #[derive(Debug, Default, Serialize, Annotate)]
 pub struct PrimaryBl0SlotRequest {
-    primary_bl0_slot: BootDataSlot,
+    pub primary_bl0_slot: BootDataSlot,
 }
 
 #[derive(Debug, Default, Serialize, Annotate)]
 pub struct PrimaryBl0SlotResponse {
-    primary_bl0_slot: BootDataSlot,
-    status: u32,
+    pub primary_bl0_slot: BootDataSlot,
+    pub status: u32,
 }
 
 #[derive(Debug, Default, Serialize, Annotate)]
-pub struct UnlockOwnershipRequest {
-    unlock_mode: UnlockMode,
-    #[serde(with = "serde_bytes")]
-    #[annotate(format=hexdump)]
-    reserved: Vec<u8>,
+pub struct OwnershipUnlockRequest {
+    pub unlock_mode: UnlockMode,
+    #[serde(with = "serde_bytes", skip_serializing_if = "Vec::is_empty")]
+    #[annotate(format=hexstr)]
+    pub reserved: Vec<u8>,
     #[annotate(format=hex)]
-    nonce: u64,
-    next_owner_key: EcdsaRawPublicKey,
-    signature: EcdsaRawSignature,
+    pub nonce: u64,
+    pub next_owner_key: EcdsaRawPublicKey,
+    pub signature: EcdsaRawSignature,
 }
 
 #[derive(Debug, Default, Serialize, Annotate)]
-pub struct UnlockOwnershipResponse {
-    status: u32,
+pub struct OwnershipUnlockResponse {
+    pub status: u32,
 }
 
 #[derive(Debug, Default, Serialize, Annotate)]
-pub struct ActivateOwnerRequest {
-    primary_bl0_slot: BootDataSlot,
-    erase_previous: HardenedBool,
-    #[serde(with = "serde_bytes")]
-    #[annotate(format=hexdump)]
-    reserved: Vec<u8>,
-    nonce: u64,
-    signature: EcdsaRawSignature,
+pub struct OwnershipActivateRequest {
+    pub primary_bl0_slot: BootDataSlot,
+    pub erase_previous: HardenedBool,
+    #[serde(with = "serde_bytes", skip_serializing_if = "Vec::is_empty")]
+    #[annotate(format=hexstr)]
+    pub reserved: Vec<u8>,
+    #[annotate(format=hex)]
+    pub nonce: u64,
+    pub signature: EcdsaRawSignature,
 }
 
 #[derive(Debug, Default, Serialize, Annotate)]
-pub struct ActivateOwnerResponse {
-    status: u32,
+pub struct OwnershipActivateResponse {
+    pub status: u32,
 }
 
 #[derive(Debug, Serialize, Annotate)]
@@ -144,33 +145,33 @@ pub enum Message {
     MinBl0SecVerRequest(MinBl0SecVerRequest),
     NextBl0SlotRequest(NextBl0SlotRequest),
     PrimaryBl0SlotRequest(PrimaryBl0SlotRequest),
-    UnlockOwnershipRequest(UnlockOwnershipRequest),
-    ActivateOwnerRequest(ActivateOwnerRequest),
+    OwnershipUnlockRequest(OwnershipUnlockRequest),
+    OwnershipActivateRequest(OwnershipActivateRequest),
     MinBl0SecVerResponse(MinBl0SecVerResponse),
     NextBl0SlotResponse(NextBl0SlotResponse),
     PrimaryBl0SlotResponse(PrimaryBl0SlotResponse),
-    UnlockOwnershipResponse(UnlockOwnershipResponse),
-    ActivateOwnerResponse(ActivateOwnerResponse),
+    OwnershipUnlockResponse(OwnershipUnlockResponse),
+    OwnershipActivateResponse(OwnershipActivateResponse),
 }
 
 #[derive(Debug, Serialize, Annotate)]
 pub struct BootSvc {
-    header: Header,
-    message: Message,
+    pub header: Header,
+    pub message: Message,
 }
 
 impl TryFrom<&[u8]> for BootSvc {
-    type Error = RescueError;
+    type Error = ChipDataError;
     fn try_from(buf: &[u8]) -> std::result::Result<Self, Self::Error> {
         let header = Header::try_from(buf)?;
         let len = header.length as usize;
         if buf.len() - Header::SIZE < len {
-            return Err(RescueError::BadSize(len, buf.len()));
+            return Err(ChipDataError::BadSize(len, buf.len()));
         }
         let mut digest = Sha256::digest(&buf[Header::HASH_LEN..Header::SIZE]);
         digest.reverse();
         if digest[..] == buf[..Header::HASH_LEN] {
-            return Err(RescueError::InvalidDigest);
+            return Err(ChipDataError::InvalidDigest);
         }
         let buf = &buf[Header::SIZE..];
         let message = match header.kind {
@@ -191,17 +192,17 @@ impl TryFrom<&[u8]> for BootSvc {
             BootSvcKind::PrimaryBl0SlotResponse => {
                 Message::PrimaryBl0SlotResponse(TryFrom::try_from(buf)?)
             }
-            BootSvcKind::UnlockOwnershipRequest => {
-                Message::UnlockOwnershipRequest(TryFrom::try_from(buf)?)
+            BootSvcKind::OwnershipUnlockRequest => {
+                Message::OwnershipUnlockRequest(TryFrom::try_from(buf)?)
             }
-            BootSvcKind::UnlockOwnershipResponse => {
-                Message::UnlockOwnershipResponse(TryFrom::try_from(buf)?)
+            BootSvcKind::OwnershipUnlockResponse => {
+                Message::OwnershipUnlockResponse(TryFrom::try_from(buf)?)
             }
-            BootSvcKind::ActivateOwnerRequest => {
-                Message::ActivateOwnerRequest(TryFrom::try_from(buf)?)
+            BootSvcKind::OwnershipActivateRequest => {
+                Message::OwnershipActivateRequest(TryFrom::try_from(buf)?)
             }
-            BootSvcKind::ActivateOwnerResponse => {
-                Message::ActivateOwnerResponse(TryFrom::try_from(buf)?)
+            BootSvcKind::OwnershipActivateResponse => {
+                Message::OwnershipActivateResponse(TryFrom::try_from(buf)?)
             }
             _ => Message::Raw(buf.to_vec()),
         };
@@ -222,10 +223,10 @@ impl BootSvc {
             Message::NextBl0SlotResponse(m) => m.write(&mut data)?,
             Message::PrimaryBl0SlotRequest(m) => m.write(&mut data)?,
             Message::PrimaryBl0SlotResponse(m) => m.write(&mut data)?,
-            Message::UnlockOwnershipRequest(m) => m.write(&mut data)?,
-            Message::UnlockOwnershipResponse(m) => m.write(&mut data)?,
-            Message::ActivateOwnerRequest(m) => m.write(&mut data)?,
-            Message::ActivateOwnerResponse(m) => m.write(&mut data)?,
+            Message::OwnershipUnlockRequest(m) => m.write(&mut data)?,
+            Message::OwnershipUnlockResponse(m) => m.write(&mut data)?,
+            Message::OwnershipActivateRequest(m) => m.write(&mut data)?,
+            Message::OwnershipActivateResponse(m) => m.write(&mut data)?,
             Message::Raw(m) => data.extend_from_slice(m.as_slice()),
         };
         let mut digest = Sha256::digest(&data[Header::HASH_LEN..]);
@@ -273,10 +274,22 @@ impl BootSvc {
             }),
         }
     }
+
+    pub fn ownership_unlock(unlock: OwnershipUnlockRequest) -> Self {
+        BootSvc {
+            header: Header {
+                digest: [0u32; 8],
+                identifier: Header::IDENTIFIER,
+                kind: BootSvcKind::OwnershipUnlockRequest,
+                length: (Header::SIZE + OwnershipUnlockRequest::SIZE) as u32,
+            },
+            message: Message::OwnershipUnlockRequest(unlock),
+        }
+    }
 }
 
 impl TryFrom<&[u8]> for Header {
-    type Error = RescueError;
+    type Error = ChipDataError;
     fn try_from(buf: &[u8]) -> std::result::Result<Self, Self::Error> {
         let mut reader = std::io::Cursor::new(buf);
         let mut val = Header::default();
@@ -304,7 +317,7 @@ impl Header {
 }
 
 impl TryFrom<&[u8]> for Empty {
-    type Error = RescueError;
+    type Error = ChipDataError;
     fn try_from(buf: &[u8]) -> std::result::Result<Self, Self::Error> {
         let mut reader = std::io::Cursor::new(buf);
         let mut val = Empty::default();
@@ -325,7 +338,7 @@ impl Empty {
 }
 
 impl TryFrom<&[u8]> for MinBl0SecVerRequest {
-    type Error = RescueError;
+    type Error = ChipDataError;
     fn try_from(buf: &[u8]) -> std::result::Result<Self, Self::Error> {
         let mut reader = std::io::Cursor::new(buf);
         Ok(MinBl0SecVerRequest {
@@ -342,7 +355,7 @@ impl MinBl0SecVerRequest {
 }
 
 impl TryFrom<&[u8]> for MinBl0SecVerResponse {
-    type Error = RescueError;
+    type Error = ChipDataError;
     fn try_from(buf: &[u8]) -> std::result::Result<Self, Self::Error> {
         let mut reader = std::io::Cursor::new(buf);
         Ok(MinBl0SecVerResponse {
@@ -361,7 +374,7 @@ impl MinBl0SecVerResponse {
 }
 
 impl TryFrom<&[u8]> for NextBl0SlotRequest {
-    type Error = RescueError;
+    type Error = ChipDataError;
     fn try_from(buf: &[u8]) -> std::result::Result<Self, Self::Error> {
         let mut reader = std::io::Cursor::new(buf);
         Ok(NextBl0SlotRequest {
@@ -378,7 +391,7 @@ impl NextBl0SlotRequest {
 }
 
 impl TryFrom<&[u8]> for NextBl0SlotResponse {
-    type Error = RescueError;
+    type Error = ChipDataError;
     fn try_from(buf: &[u8]) -> std::result::Result<Self, Self::Error> {
         let mut reader = std::io::Cursor::new(buf);
         Ok(NextBl0SlotResponse {
@@ -395,7 +408,7 @@ impl NextBl0SlotResponse {
 }
 
 impl TryFrom<&[u8]> for PrimaryBl0SlotRequest {
-    type Error = RescueError;
+    type Error = ChipDataError;
     fn try_from(buf: &[u8]) -> std::result::Result<Self, Self::Error> {
         let mut reader = std::io::Cursor::new(buf);
         Ok(PrimaryBl0SlotRequest {
@@ -412,7 +425,7 @@ impl PrimaryBl0SlotRequest {
 }
 
 impl TryFrom<&[u8]> for PrimaryBl0SlotResponse {
-    type Error = RescueError;
+    type Error = ChipDataError;
     fn try_from(buf: &[u8]) -> std::result::Result<Self, Self::Error> {
         let mut reader = std::io::Cursor::new(buf);
         Ok(PrimaryBl0SlotResponse {
@@ -430,8 +443,8 @@ impl PrimaryBl0SlotResponse {
     }
 }
 
-impl TryFrom<&[u8]> for UnlockOwnershipRequest {
-    type Error = RescueError;
+impl TryFrom<&[u8]> for OwnershipUnlockRequest {
+    type Error = ChipDataError;
     fn try_from(buf: &[u8]) -> std::result::Result<Self, Self::Error> {
         let mut reader = std::io::Cursor::new(buf);
         let mut val = Self::default();
@@ -439,19 +452,19 @@ impl TryFrom<&[u8]> for UnlockOwnershipRequest {
         val.reserved.resize(Self::RESERVED_SIZE, 0);
         reader.read_exact(&mut val.reserved)?;
         val.nonce = reader.read_u64::<LittleEndian>()?;
-        val.next_owner_key = EcdsaRawPublicKey::read(&mut reader).map_err(RescueError::Anyhow)?;
-        val.signature = EcdsaRawSignature::read(&mut reader).map_err(RescueError::Anyhow)?;
+        val.next_owner_key = EcdsaRawPublicKey::read(&mut reader).map_err(ChipDataError::Anyhow)?;
+        val.signature = EcdsaRawSignature::read(&mut reader).map_err(ChipDataError::Anyhow)?;
         Ok(val)
     }
 }
-impl UnlockOwnershipRequest {
-    pub const SIZE: usize = 8;
+impl OwnershipUnlockRequest {
+    pub const SIZE: usize = 212;
     const RESERVED_SIZE: usize = 18 * std::mem::size_of::<u32>();
     const SIGNATURE_OFFSET: usize = 148;
     pub fn write(&self, dest: &mut impl Write) -> Result<()> {
         dest.write_u32::<LittleEndian>(u32::from(self.unlock_mode))?;
         for i in 0..Self::RESERVED_SIZE {
-            let p = self.reserved.get(i).unwrap_or(&0xFF);
+            let p = self.reserved.get(i).unwrap_or(&0x00);
             dest.write_all(std::slice::from_ref(p))?;
         }
         dest.write_u64::<LittleEndian>(self.nonce)?;
@@ -473,16 +486,16 @@ impl UnlockOwnershipRequest {
     }
 }
 
-impl TryFrom<&[u8]> for UnlockOwnershipResponse {
-    type Error = RescueError;
+impl TryFrom<&[u8]> for OwnershipUnlockResponse {
+    type Error = ChipDataError;
     fn try_from(buf: &[u8]) -> std::result::Result<Self, Self::Error> {
         let mut reader = std::io::Cursor::new(buf);
-        Ok(UnlockOwnershipResponse {
+        Ok(OwnershipUnlockResponse {
             status: reader.read_u32::<LittleEndian>()?,
         })
     }
 }
-impl UnlockOwnershipResponse {
+impl OwnershipUnlockResponse {
     pub const SIZE: usize = 4;
     pub fn write(&self, dest: &mut impl Write) -> Result<()> {
         dest.write_u32::<LittleEndian>(self.status)?;
@@ -490,8 +503,8 @@ impl UnlockOwnershipResponse {
     }
 }
 
-impl TryFrom<&[u8]> for ActivateOwnerRequest {
-    type Error = RescueError;
+impl TryFrom<&[u8]> for OwnershipActivateRequest {
+    type Error = ChipDataError;
     fn try_from(buf: &[u8]) -> std::result::Result<Self, Self::Error> {
         let mut reader = std::io::Cursor::new(buf);
         let mut val = Self::default();
@@ -500,19 +513,19 @@ impl TryFrom<&[u8]> for ActivateOwnerRequest {
         val.reserved.resize(Self::RESERVED_SIZE, 0);
         reader.read_exact(&mut val.reserved)?;
         val.nonce = reader.read_u64::<LittleEndian>()?;
-        val.signature = EcdsaRawSignature::read(&mut reader).map_err(RescueError::Anyhow)?;
+        val.signature = EcdsaRawSignature::read(&mut reader).map_err(ChipDataError::Anyhow)?;
         Ok(val)
     }
 }
-impl ActivateOwnerRequest {
-    pub const SIZE: usize = 8;
+impl OwnershipActivateRequest {
+    pub const SIZE: usize = 212;
     const RESERVED_SIZE: usize = 33 * std::mem::size_of::<u32>();
     const SIGNATURE_OFFSET: usize = 148;
     pub fn write(&self, dest: &mut impl Write) -> Result<()> {
         dest.write_u32::<LittleEndian>(u32::from(self.primary_bl0_slot))?;
         dest.write_u32::<LittleEndian>(u32::from(self.erase_previous))?;
         for i in 0..Self::RESERVED_SIZE {
-            let p = self.reserved.get(i).unwrap_or(&0xFF);
+            let p = self.reserved.get(i).unwrap_or(&0x00);
             dest.write_all(std::slice::from_ref(p))?;
         }
         dest.write_u64::<LittleEndian>(self.nonce)?;
@@ -528,16 +541,16 @@ impl ActivateOwnerRequest {
     }
 }
 
-impl TryFrom<&[u8]> for ActivateOwnerResponse {
-    type Error = RescueError;
+impl TryFrom<&[u8]> for OwnershipActivateResponse {
+    type Error = ChipDataError;
     fn try_from(buf: &[u8]) -> std::result::Result<Self, Self::Error> {
         let mut reader = std::io::Cursor::new(buf);
-        Ok(ActivateOwnerResponse {
+        Ok(OwnershipActivateResponse {
             status: reader.read_u32::<LittleEndian>()?,
         })
     }
 }
-impl ActivateOwnerResponse {
+impl OwnershipActivateResponse {
     pub const SIZE: usize = 4;
     pub fn write(&self, dest: &mut impl Write) -> Result<()> {
         dest.write_u32::<LittleEndian>(self.status)?;

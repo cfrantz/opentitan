@@ -15,3 +15,20 @@ cc_library(
     ],
     strip_include_prefix = "cryptoc/include",
 )
+
+cc_library(
+    name = "cryptoc",
+    copts = [
+        "-Wno-error=implicit-int-conversion",
+        "-Wno-error=sign-conversion",
+    ],
+    srcs = glob(
+        ["cryptoc/*.c"],
+        exclude=[
+            "cryptoc/sha512.c",
+            "cryptoc/sha384.c",
+            "cryptoc/*_unittest.c",
+        ]),
+    hdrs = glob(["cryptoc/include/cryptoc/*.h"]),
+    strip_include_prefix = "cryptoc/include",
+)

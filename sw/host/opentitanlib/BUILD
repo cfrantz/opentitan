@@ -75,6 +75,7 @@ rust_library(
         "src/chip/boolean.rs",
         "src/chip/boot_log.rs",
         "src/chip/boot_svc.rs",
+        "src/chip/helper.rs",
         "src/chip/mod.rs",
         "src/console/mod.rs",
         "src/console/spi.rs",

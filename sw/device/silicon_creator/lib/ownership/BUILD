@@ -94,6 +94,37 @@ cc_library(
 )
 
 cc_library(
+    name = "owner_block",
+    srcs = ["owner_block.c"],
+    hdrs = ["owner_block.h"],
+    deps = [
+        ":datatypes",
+        "//sw/device/silicon_creator/lib:boot_data",
+        "//sw/device/silicon_creator/lib/drivers:flash_ctrl",
+    ],
+)
+
+cc_test(
+    name = "owner_block_unittest",
+    srcs = [
+        "owner_block_unittest.cc",
+        "testdata/basic_owner.inc",
+        "testdata/basic_owner_bad.inc",
+        "testdata/basic_owner_dup_flash.inc",
+        "testdata/basic_owner_dup_info.inc",
+        "testdata/basic_owner_dup_rescue.inc",
+        "testdata/basic_owner_unknown_tag.inc",
+    ],
+    deps = [
+        ":datatypes",
+        ":owner_block",
+        "//sw/device/silicon_creator/lib:boot_data",
+        "//sw/device/silicon_creator/testing:rom_test",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "ownership_unlock",
     srcs = ["ownership_unlock.c"],
     hdrs = ["ownership_unlock.h"],

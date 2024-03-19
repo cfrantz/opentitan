@@ -155,6 +155,17 @@ OT_ASSERT_MEMBER_OFFSET(owner_application_key_t, usage_constraint, 44);
 OT_ASSERT_MEMBER_OFFSET(owner_application_key_t, key, 48);
 OT_ASSERT_SIZE(owner_application_key_t, 48);
 
+typedef enum owner_flash_property {
+  kOwnerFlashPropertyRead = 0x00000001,
+  kOwnerFlashPropertyProgram = 0x00000002,
+  kOwnerFlashPropertyErase = 0x00000004,
+  kOwnerFlashPropertyScramble = 0x00000008,
+  kOwnerFlashPropertyEcc = 0x00000010,
+  kOwnerFlashPropertyHighEndurance = 0x00000020,
+  kOwnerFlashPropertyProtectWhenPrimary = 0x40000000,
+  kOwnerFlashPropertyLock = 0x80000000,
+} owner_flash_property_t;
+
 /**
  * The owner flash region describes a region of flash and its configuration
  * properties (ie: ECC, Scrambling, High Endurance, etc).

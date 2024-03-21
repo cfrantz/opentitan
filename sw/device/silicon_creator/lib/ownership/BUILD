@@ -89,7 +89,11 @@ cc_library(
         ":datatypes",
         ":ecdsa",
         ":ownership_key",
+        ":owner_block",
+        "//sw/device/silicon_creator/lib:boot_data",
+        "//sw/device/lib/base:hardened_memory",
         "//sw/device/silicon_creator/lib/drivers:flash_ctrl",
+        "//sw/device/silicon_creator/lib:dbg_print",
     ],
 )
 

@@ -199,6 +199,8 @@ enum module_ {
   X(kErrorOwnershipDuplicateItem,     ERROR_(6, kModuleOwnership, kAlreadyExists)), \
   X(kErrorOwnershipFlashConfigLenth,  ERROR_(7, kModuleOwnership, kOutOfRange)), \
   X(kErrorOwnershipInvalidInfoPage,   ERROR_(8, kModuleOwnership, kInvalidArgument)), \
+  X(kErrorOwnershipBadInfoPage,       ERROR_(9, kModuleOwnership, kInternal)), \
+  X(kErrorOwnershipNoOwner,           ERROR_(10, kModuleOwnership, kInternal)), \
   \
   /* This comment prevent clang from trying to format the macro. */
 

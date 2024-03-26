@@ -86,6 +86,7 @@ pub struct MinBl0SecVerResponse {
     /// The current minimum BL0 version.
     pub ver: u32,
     /// The status response to the request.
+    #[annotate(format = hex)]
     pub status: u32,
 }
 
@@ -100,6 +101,7 @@ pub struct NextBl0SlotRequest {
 #[derive(Debug, Default, Serialize, Annotate)]
 pub struct NextBl0SlotResponse {
     /// The status response to the request.
+    #[annotate(format = hex)]
     pub status: u32,
 }
 
@@ -116,6 +118,7 @@ pub struct PrimaryBl0SlotResponse {
     /// The current primary slot.
     pub primary_bl0_slot: BootSlot,
     /// The status response to the request.
+    #[annotate(format = hex)]
     pub status: u32,
 }
 
@@ -141,6 +144,7 @@ pub struct OwnershipUnlockRequest {
 #[derive(Debug, Default, Serialize, Annotate)]
 pub struct OwnershipUnlockResponse {
     /// The status response to the request.
+    #[annotate(format = hex)]
     pub status: u32,
 }
 
@@ -166,6 +170,7 @@ pub struct OwnershipActivateRequest {
 #[derive(Debug, Default, Serialize, Annotate)]
 pub struct OwnershipActivateResponse {
     /// The status response to the request.
+    #[annotate(format = hex)]
     pub status: u32,
 }
 

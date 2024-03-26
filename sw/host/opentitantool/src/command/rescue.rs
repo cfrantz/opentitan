@@ -45,6 +45,12 @@ pub struct Firmware {
         help = "Wait after upload (no automatic reboot)"
     )]
     wait: bool,
+    #[arg(
+        long,
+        default_value_t = true,
+        help = "Reset the target to enter rescue mode"
+    )]
+    reset_target: bool,
     #[arg(value_name = "FILE")]
     filename: PathBuf,
 }
@@ -75,7 +81,7 @@ impl CommandDispatch for Firmware {
         };
         let uart = self.params.create(transport)?;
         let rescue = RescueSerial::new(uart);
-        rescue.enter(transport)?;
+        rescue.enter(transport, self.reset_target)?;
         if let Some(rate) = self.rate {
             rescue.set_baud(rate)?;
         }
@@ -91,6 +97,12 @@ impl CommandDispatch for Firmware {
 pub struct GetBootLog {
     #[command(flatten)]
     params: UartParams,
+    #[arg(
+        long,
+        default_value_t = true,
+        help = "Reset the target to enter rescue mode"
+    )]
+    reset_target: bool,
     #[arg(long, short, default_value = "false")]
     raw: bool,
 }
@@ -103,7 +115,7 @@ impl CommandDispatch for GetBootLog {
     ) -> Result<Option<Box<dyn Annotate>>> {
         let uart = self.params.create(transport)?;
         let rescue = RescueSerial::new(uart);
-        rescue.enter(transport)?;
+        rescue.enter(transport, self.reset_target)?;
         if self.raw {
             let data = rescue.get_boot_log_raw()?;
             Ok(Some(Box::new(RawBytes(data))))
@@ -118,6 +130,12 @@ impl CommandDispatch for GetBootLog {
 pub struct GetBootSvc {
     #[command(flatten)]
     params: UartParams,
+    #[arg(
+        long,
+        default_value_t = true,
+        help = "Reset the target to enter rescue mode"
+    )]
+    reset_target: bool,
     #[arg(long, short, default_value = "false")]
     raw: bool,
 }
@@ -130,7 +148,7 @@ impl CommandDispatch for GetBootSvc {
     ) -> Result<Option<Box<dyn Annotate>>> {
         let uart = self.params.create(transport)?;
         let rescue = RescueSerial::new(uart);
-        rescue.enter(transport)?;
+        rescue.enter(transport, self.reset_target)?;
         if self.raw {
             let data = rescue.get_boot_svc_raw()?;
             Ok(Some(Box::new(RawBytes(data))))
@@ -145,6 +163,18 @@ impl CommandDispatch for GetBootSvc {
 pub struct SetNextBl0Slot {
     #[command(flatten)]
     params: UartParams,
+    #[arg(
+        long,
+        default_value_t = true,
+        help = "Reset the target to enter rescue mode"
+    )]
+    reset_target: bool,
+    #[arg(
+        long,
+        default_value_t = true,
+        help = "Get the response from the target"
+    )]
+    get_response: bool,
     #[arg(default_value = "SlotA")]
     slot: BootSlot,
 }
@@ -157,9 +187,16 @@ impl CommandDispatch for SetNextBl0Slot {
     ) -> Result<Option<Box<dyn Annotate>>> {
         let uart = self.params.create(transport)?;
         let rescue = RescueSerial::new(uart);
-        rescue.enter(transport)?;
+        rescue.enter(transport, self.reset_target)?;
         rescue.set_next_bl0_slot(self.slot)?;
-        Ok(None)
+        if self.get_response {
+            rescue.enter(transport, false)?;
+            let response = rescue.get_boot_svc()?;
+            rescue.reboot()?;
+            Ok(Some(Box::new(response)))
+        } else {
+            Ok(None)
+        }
     }
 }
 
@@ -167,6 +204,18 @@ impl CommandDispatch for SetNextBl0Slot {
 pub struct SetPrimaryBl0Slot {
     #[command(flatten)]
     params: UartParams,
+    #[arg(
+        long,
+        default_value_t = true,
+        help = "Reset the target to enter rescue mode"
+    )]
+    reset_target: bool,
+    #[arg(
+        long,
+        default_value_t = true,
+        help = "Get the response from the target"
+    )]
+    get_response: bool,
     #[arg(default_value = "SlotA")]
     slot: BootSlot,
 }
@@ -179,9 +228,16 @@ impl CommandDispatch for SetPrimaryBl0Slot {
     ) -> Result<Option<Box<dyn Annotate>>> {
         let uart = self.params.create(transport)?;
         let rescue = RescueSerial::new(uart);
-        rescue.enter(transport)?;
+        rescue.enter(transport, self.reset_target)?;
         rescue.set_primary_bl0_slot(self.slot)?;
-        Ok(None)
+        if self.get_response {
+            rescue.enter(transport, false)?;
+            let response = rescue.get_boot_svc()?;
+            rescue.reboot()?;
+            Ok(Some(Box::new(response)))
+        } else {
+            Ok(None)
+        }
     }
 }
 
@@ -189,6 +245,18 @@ impl CommandDispatch for SetPrimaryBl0Slot {
 pub struct OwnershipUnlock {
     #[command(flatten)]
     params: UartParams,
+    #[arg(
+        long,
+        default_value_t = true,
+        help = "Reset the target to enter rescue mode"
+    )]
+    reset_target: bool,
+    #[arg(
+        long,
+        default_value_t = true,
+        help = "Get the response from the target"
+    )]
+    get_response: bool,
     #[command(flatten)]
     unlock: OwnershipUnlockParams,
     #[arg(short, long, help = "A file containing a binary unlock request")]
@@ -207,9 +275,16 @@ impl CommandDispatch for OwnershipUnlock {
 
         let uart = self.params.create(transport)?;
         let rescue = RescueSerial::new(uart);
-        rescue.enter(transport)?;
+        rescue.enter(transport, self.reset_target)?;
         rescue.ownership_unlock(unlock)?;
-        Ok(None)
+        if self.get_response {
+            rescue.enter(transport, false)?;
+            let response = rescue.get_boot_svc()?;
+            rescue.reboot()?;
+            Ok(Some(Box::new(response)))
+        } else {
+            Ok(None)
+        }
     }
 }
 
@@ -217,6 +292,18 @@ impl CommandDispatch for OwnershipUnlock {
 pub struct OwnershipActivate {
     #[command(flatten)]
     params: UartParams,
+    #[arg(
+        long,
+        default_value_t = true,
+        help = "Reset the target to enter rescue mode"
+    )]
+    reset_target: bool,
+    #[arg(
+        long,
+        default_value_t = true,
+        help = "Get the response from the target"
+    )]
+    get_response: bool,
     #[command(flatten)]
     activate: OwnershipActivateParams,
     #[arg(short, long, help = "A file containing a binary activate request")]
@@ -235,9 +322,16 @@ impl CommandDispatch for OwnershipActivate {
 
         let uart = self.params.create(transport)?;
         let rescue = RescueSerial::new(uart);
-        rescue.enter(transport)?;
+        rescue.enter(transport, self.reset_target)?;
         rescue.ownership_activate(activate)?;
-        Ok(None)
+        if self.get_response {
+            rescue.enter(transport, false)?;
+            let response = rescue.get_boot_svc()?;
+            rescue.reboot()?;
+            Ok(Some(Box::new(response)))
+        } else {
+            Ok(None)
+        }
     }
 }
 
@@ -245,6 +339,12 @@ impl CommandDispatch for OwnershipActivate {
 pub struct SetOwnerConfig {
     #[command(flatten)]
     params: UartParams,
+    #[arg(
+        long,
+        default_value_t = true,
+        help = "Reset the target to enter rescue mode"
+    )]
+    reset_target: bool,
     #[arg(help = "A signed owner configuration block")]
     input: PathBuf,
 }
@@ -258,14 +358,14 @@ impl CommandDispatch for SetOwnerConfig {
         let data = std::fs::read(&self.input)?;
         let uart = self.params.create(transport)?;
         let rescue = RescueSerial::new(uart);
-        rescue.enter(transport)?;
+        rescue.enter(transport, self.reset_target)?;
         rescue.set_owner_config(&data)?;
         Ok(None)
     }
 }
 
 #[derive(Debug, Subcommand, CommandDispatch)]
-pub enum BootSvc {
+pub enum BootSvcCommand {
     Get(GetBootSvc),
     SetNextBl0Slot(SetNextBl0Slot),
     SetPrimaryBl0Slot(SetPrimaryBl0Slot),
@@ -276,7 +376,7 @@ pub enum BootSvc {
 #[derive(Debug, Subcommand, CommandDispatch)]
 pub enum RescueCommand {
     #[command(subcommand)]
-    BootSvc(BootSvc),
+    BootSvc(BootSvcCommand),
     GetBootLog(GetBootLog),
     Firmware(Firmware),
     SetOwnerConfig(SetOwnerConfig),

@@ -8,6 +8,9 @@
 #include <stdint.h>
 
 #include "sw/device/lib/base/macros.h"
+#include "sw/device/silicon_creator/lib/sigverify/rsa_key.h"
+#include "sw/device/silicon_creator/lib/sigverify/spx_key.h"
+#include "sw/device/silicon_creator/lib/sigverify/ecdsa_p256_key.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,8 +45,8 @@ typedef enum ownership_state {
 } ownership_state_t;
 
 typedef enum ownership_key_alg {
-  /** Key algorithm RSA: `RSA\0` */
-  kOwnershipKeyAlgRsa = 0x00415352,
+  /** Key algorithm RSA: `RSA3` */
+  kOwnershipKeyAlgRsa = 0x33415352,
   /** Key algorithm ECDSA: `ECDS` */
   kOwnershipKeyAlgEcdsa = 0x53444345,
   /** Key algorithm SPX+: `SPX+` */
@@ -125,6 +128,18 @@ OT_ASSERT_MEMBER_OFFSET(owner_block_t, seal, 2016);
 OT_ASSERT_SIZE(owner_block_t, 2048);
 
 /**
+ * The owner application domain designates an application key
+ * as one of Test, Dev or Prod.
+ */
+typedef enum owner_app_domain {
+    /** Test domain: `test` */
+    kOwnerAppDomainTest = 0x74736574,
+    /** Dev domain: `dev_` */
+    kOwnerAppDomainDev = 0x5f766564,
+    /** Prod domain: `prod` */
+    kOwnerAppDomainProd = 0x646f7270,
+} owner_app_domain_t;
+/**
  * The owner application key encodes keys for verifying the owner's application
  * firmware.
  */
@@ -144,7 +159,12 @@ typedef struct owner_application_key {
   /** Usage constraint must match manifest header's constraint */
   uint32_t usage_constraint;
   /** Key material.  Varies by algorithm type. */
-  uint32_t key[];
+  union {
+    uint32_t id;
+    sigverify_rsa_key_t rsa;
+    sigverify_spx_key_t spx;
+    sigverify_ecdsa_p256_buffer_t ecdsa;
+  } data;
 } owner_application_key_t;
 
 OT_ASSERT_MEMBER_OFFSET(owner_application_key_t, header, 0);
@@ -152,8 +172,8 @@ OT_ASSERT_MEMBER_OFFSET(owner_application_key_t, key_alg, 8);
 OT_ASSERT_MEMBER_OFFSET(owner_application_key_t, key_domain, 12);
 OT_ASSERT_MEMBER_OFFSET(owner_application_key_t, key_diversifier, 16);
 OT_ASSERT_MEMBER_OFFSET(owner_application_key_t, usage_constraint, 44);
-OT_ASSERT_MEMBER_OFFSET(owner_application_key_t, key, 48);
-OT_ASSERT_SIZE(owner_application_key_t, 48);
+OT_ASSERT_MEMBER_OFFSET(owner_application_key_t, data, 48);
+OT_ASSERT_SIZE(owner_application_key_t, 48 + 384 + 32);
 
 typedef enum owner_flash_property {
   kOwnerFlashPropertyRead = 0x00000001,

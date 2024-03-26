@@ -29,14 +29,7 @@ status_t boot_log_print(boot_log_t *boot_log) {
                                      : (boot_log->bl0_slot == kBl0BootSlotB)
                                          ? "B"
                                          : "error");
-  ownership_state_t os = boot_log->ownership_state;
-  LOG_INFO("boot_log ownership_state = %s",
-           os == kOwnershipStateLockedOwner        ? "LockedOwner"
-           : os == kOwnershipStateLockedUpdate     ? "LockedUpdate"
-           : os == kOwnershipStateUnlockedAny      ? "UnlockedAny"
-           : os == kOwnershipStateUnlockedEndorsed ? "UnlockedEndorsed"
-                                                   : "LockedNone");
-
+  LOG_INFO("boot_log ownership_state = %C", boot_log->ownership_state);
   return OK_STATUS();
 }
 

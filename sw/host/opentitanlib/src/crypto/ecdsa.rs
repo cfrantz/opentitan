@@ -58,6 +58,7 @@ impl EcdsaPrivateKey {
         let (sig, _) = self.key.sign_prehash_recoverable(&digest.to_be_bytes())?;
         let bytes = sig.to_bytes();
         let half = bytes.len() / 2;
+        log::info!("signature = {:x?}", bytes);
         // The signature bytes are (R || S).  Since opentitan is a little-endian
         // machine, we want to reverse the byte order of each component of the
         // signature.
@@ -70,6 +71,7 @@ impl EcdsaPrivateKey {
 
     pub fn digest_and_sign(&self, data: &[u8]) -> Result<EcdsaRawSignature> {
         let digest = sha256(data);
+        log::info!("digest = {:x?}", digest);
         self.sign(&digest)
     }
 }
@@ -159,9 +161,28 @@ impl EcdsaPublicKey {
         // little-endian order.  Reverse the bytes back to big-endian ordering.
         bytes[..half].reverse();
         bytes[half..].reverse();
+        log::info!("signature = {:x?}", bytes);
         let signature = Signature::from_slice(&bytes)?;
         self.key.verify_prehash(&digest.to_be_bytes(), &signature)?;
         Ok(())
+    }
+
+    pub fn digest_and_verify(&self, data: &[u8], signature: &EcdsaRawSignature) -> Result<()> {
+        let digest = sha256(data);
+        log::info!("digest = {:x?}", digest);
+        self.verify(&digest, signature)
+    }
+}
+
+impl TryFrom<&EcdsaRawPublicKey> for EcdsaPublicKey {
+    type Error = Error;
+    fn try_from(v: &EcdsaRawPublicKey) -> Result<Self, Self::Error> {
+        let mut sec1 = vec![0x04];
+        sec1.extend(v.x.iter().rev());
+        sec1.extend(v.y.iter().rev());
+        let key = VerifyingKey::from_sec1_bytes(&sec1).map_err(|e| Error::Other(e.into()))?;
+        log::info!("key = {:?}", key);
+        Ok(EcdsaPublicKey { key })
     }
 }
 
@@ -187,6 +208,7 @@ impl Default for EcdsaRawPublicKey {
 impl TryFrom<&EcdsaPublicKey> for EcdsaRawPublicKey {
     type Error = Error;
     fn try_from(v: &EcdsaPublicKey) -> Result<Self, Self::Error> {
+        log::info!("key = {:?}", v.key);
         let point = v.key.to_encoded_point(false);
         // Since opentitan is a little-endian machine, we reverse the byte
         // order of the X and Y values.

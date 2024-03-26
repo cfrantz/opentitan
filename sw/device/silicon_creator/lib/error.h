@@ -201,6 +201,7 @@ enum module_ {
   X(kErrorOwnershipInvalidInfoPage,   ERROR_(8, kModuleOwnership, kInvalidArgument)), \
   X(kErrorOwnershipBadInfoPage,       ERROR_(9, kModuleOwnership, kInternal)), \
   X(kErrorOwnershipNoOwner,           ERROR_(10, kModuleOwnership, kInternal)), \
+  X(kErrorOwnershipKeyNotFound,       ERROR_(11, kModuleOwnership, kNotFound)), \
   \
   /* This comment prevent clang from trying to format the macro. */
 

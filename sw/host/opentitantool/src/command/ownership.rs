@@ -11,7 +11,7 @@ use std::path::PathBuf;
 
 use opentitanlib::app::command::CommandDispatch;
 use opentitanlib::app::TransportWrapper;
-use opentitanlib::chip::helper::OwnershipUnlockParams;
+use opentitanlib::chip::helper::{OwnershipUnlockParams, OwnershipActivateParams};
 use opentitanlib::crypto::ecdsa::{EcdsaPrivateKey, EcdsaRawSignature};
 use opentitanlib::ownership::{OwnerBlock, TlvHeader};
 
@@ -36,10 +36,12 @@ pub struct OwnershipConfigCommand {
     input: Option<PathBuf>,
     #[arg(long, value_enum, default_value_t = Format::Auto, help = "Input format")]
     inform: Format,
-    #[arg(long, help = "A path to a detached signature for the unlock request")]
+    #[arg(long, help = "A path to a detached signature for the owner block")]
     pub signature: Option<PathBuf>,
     #[arg(long, help = "A path to a private key to sign the request")]
     pub sign: Option<PathBuf>,
+    #[arg(long, help = "Verify the signature on the owner block")]
+    pub verify: bool,
     #[arg(help = "Binary output file path")]
     output: Option<PathBuf>,
 }
@@ -83,6 +85,9 @@ impl CommandDispatch for OwnershipConfigCommand {
             let key = EcdsaPrivateKey::load(sign)?;
             config.sign(&key)?;
         }
+        if self.verify {
+            config.verify()?;
+        }
 
         if let Some(output) = &self.output {
             let mut f = OpenOptions::new().write(true).create(true).open(output)?;
@@ -117,15 +122,46 @@ impl CommandDispatch for OwnershipUnlockCommand {
             .params
             .apply_to(self.input.as_ref().map(File::open).transpose()?.as_mut())?;
         if let Some(output) = &self.output {
-            let mut f = OpenOptions::new().write(true).create(true).open(output)?;
+            let mut f = OpenOptions::new().write(true).create(true).truncate(true).open(output)?;
             unlock.write(&mut f)?;
         }
         Ok(Some(Box::new(unlock)))
     }
 }
 
+#[derive(Debug, Args)]
+pub struct OwnershipActivateCommand {
+    #[command(flatten)]
+    params: OwnershipActivateParams,
+    #[arg(short, long, help = "A file containing a binary unlock request")]
+    input: Option<PathBuf>,
+    #[arg(
+        value_name = "FILE",
+        help = "A file to write out a binary unlock request"
+    )]
+    output: Option<PathBuf>,
+}
+
+impl CommandDispatch for OwnershipActivateCommand {
+    fn run(
+        &self,
+        _context: &dyn Any,
+        _transport: &TransportWrapper,
+    ) -> Result<Option<Box<dyn Annotate>>> {
+        let activate = self
+            .params
+            .apply_to(self.input.as_ref().map(File::open).transpose()?.as_mut())?;
+        if let Some(output) = &self.output {
+            let mut f = OpenOptions::new().write(true).create(true).open(output)?;
+            activate.write(&mut f)?;
+        }
+        Ok(Some(Box::new(activate)))
+    }
+}
+
 #[derive(Debug, Subcommand, CommandDispatch)]
 pub enum OwnershipCommand {
     Config(OwnershipConfigCommand),
+    Activate(OwnershipActivateCommand),
     Unlock(OwnershipUnlockCommand),
 }

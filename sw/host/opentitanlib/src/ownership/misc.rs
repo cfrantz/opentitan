@@ -28,7 +28,7 @@ with_unknown! {
 
     pub enum OwnershipKeyAlg: u32 [default = Self::Unknown] {
         Unknown = 0,
-        Rsa = u32::from_le_bytes(*b"RSA\0"),
+        Rsa = u32::from_le_bytes(*b"RSA3"),
         Ecdsa = u32::from_le_bytes(*b"ECDS"),
         Spx = u32::from_le_bytes(*b"SPX+"),
         Spxq20 = u32::from_le_bytes(*b"Sq20"),

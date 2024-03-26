@@ -70,6 +70,7 @@ rom_error_t owner_block_parse(const owner_block_t *block,
 rom_error_t owner_block_flash_apply(const owner_flash_config_t *flash,
                                     uint32_t config_side,
                                     uint32_t primary_side) {
+  if (!flash) return kErrorOk;
   uint32_t start = config_side == kBootDataSlotA   ? 0
                    : config_side == kBootDataSlotB ? kFlashBankSize
                                                    : 0xFFFFFFFF;
@@ -118,6 +119,7 @@ static inline bool is_owner_page(const owner_info_page_t *config) {
 }
 
 rom_error_t owner_block_info_apply(const owner_flash_info_config_t *info) {
+  if (!info) return kErrorOk;
   size_t len = (info->header.length - sizeof(owner_flash_info_config_t)) /
                sizeof(owner_info_page_t);
   const owner_info_page_t *config = info->config;
@@ -150,4 +152,16 @@ rom_error_t owner_block_info_apply(const owner_flash_info_config_t *info) {
     }
   }
   return kErrorOk;
+}
+
+rom_error_t owner_keyring_find_key(const owner_application_keyring_t *keyring,
+        uint32_t key_alg, uint32_t key_id, size_t *index) {
+    for(size_t i=0; i<keyring->length; ++i) {
+        if (keyring->key[i]->key_alg == key_alg &&
+            keyring->key[i]->data.id == key_id) {
+            *index = i;
+            return kErrorOk;
+        }
+    }
+    return kErrorOwnershipKeyNotFound;
 }

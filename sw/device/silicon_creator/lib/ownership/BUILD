@@ -21,6 +21,11 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "datatypes",
     hdrs = ["datatypes.h"],
+    deps = [
+        "//sw/device/silicon_creator/lib/sigverify:rsa_key",
+        "//sw/device/silicon_creator/lib/sigverify:spx_key",
+        "//sw/device/silicon_creator/lib/sigverify:ecdsa_p256_key",
+    ],
 )
 
 cc_library(
@@ -145,6 +150,22 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "ownership_activate",
+    srcs = ["ownership_activate.c"],
+    hdrs = ["ownership_activate.h"],
+    deps = [
+        ":datatypes",
+        ":ownership",
+        ":ownership_key",
+        "//sw/device/lib/base:memory",
+        "//sw/device/silicon_creator/lib:boot_data",
+        "//sw/device/silicon_creator/lib:error",
+        "//sw/device/silicon_creator/lib/boot_svc:boot_svc_msg",
+        "//sw/device/silicon_creator/lib/drivers:flash_ctrl",
+    ],
+)
+
 cc_test(
     name = "ownership_unlock_unittest",
     srcs = [
@@ -159,5 +180,19 @@ cc_test(
         "//sw/device/silicon_creator/lib/boot_svc:boot_svc_header",
         "//sw/device/silicon_creator/testing:rom_test",
         "@googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "test_owner",
+    testonly = True,
+    alwayslink = True,
+    srcs = ["test_owner.c"],
+    deps = [
+        ":datatypes",
+        ":ownership",
+        ":owner_block",
+        "//sw/device/silicon_creator/lib:boot_data",
+        "//sw/device/silicon_creator/lib/ownership/keys/fake:includes",
     ],
 )

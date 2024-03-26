@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::Result;
+use anyhow::{anyhow, Result, Context};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use serde_annotate::Annotate;
@@ -11,7 +11,7 @@ use std::io::{Read, Write};
 
 use super::misc::{KeyMaterial, OwnershipKeyAlg, TlvHeader, TlvTag};
 use super::{OwnerApplicationKey, OwnerFlashConfig, OwnerFlashInfoConfig, OwnerRescueConfig};
-use crate::crypto::ecdsa::{EcdsaPrivateKey, EcdsaRawSignature};
+use crate::crypto::ecdsa::{EcdsaPrivateKey, EcdsaPublicKey, EcdsaRawSignature};
 use crate::with_unknown;
 
 with_unknown! {
@@ -79,7 +79,7 @@ impl Default for OwnerBlock {
 impl OwnerBlock {
     const SIZE: usize = 2048;
     const DATA_SIZE: usize = 1728;
-    const SIGNATURE_OFFSET: usize = 1752;
+    const SIGNATURE_OFFSET: usize = 1952;
 
     pub fn basic() -> Self {
         Self {
@@ -154,6 +154,22 @@ impl OwnerBlock {
         self.write(&mut data)?;
         self.signature = key.digest_and_sign(&data[..Self::SIGNATURE_OFFSET])?;
         Ok(())
+    }
+
+    pub fn verify(&self) -> Result<()> {
+        let mut data = Vec::new();
+        self.write(&mut data)?;
+        match &self.owner_key {
+            KeyMaterial::Ecdsa(raw) => {
+                let key = EcdsaPublicKey::try_from(raw)?;
+                key.digest_and_verify(&data[..Self::SIGNATURE_OFFSET], &self.signature).context("Failed to verify owner block")?;
+            }
+            _ => {
+                return Err(anyhow!("Unsupported owner key algorithm"));
+
+            }
+        }
+        return Ok(());
     }
 }
 

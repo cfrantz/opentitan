@@ -15,19 +15,16 @@ rom_ext_boot_policy_manifests_t rom_ext_boot_policy_manifests_get(
   const manifest_t *slot_b = rom_ext_boot_policy_manifest_b_get();
   uint32_t slot = boot_data->primary_bl0_slot;
   switch (launder32(slot)) {
-    case kBootDataSlotA:
-      HARDENED_CHECK_EQ(slot, kBootDataSlotA);
-      return (rom_ext_boot_policy_manifests_t){
-          .ordered = {slot_a, slot_b},
-      };
     case kBootDataSlotB:
-      HARDENED_CHECK_EQ(slot, kBootDataSlotB);
       return (rom_ext_boot_policy_manifests_t){
           .ordered = {slot_b, slot_a},
       };
+    case kBootDataSlotA:
+      OT_FALLTHROUGH_INTENDED;
     default:
-      HARDENED_TRAP();
-      OT_UNREACHABLE();
+      return (rom_ext_boot_policy_manifests_t){
+          .ordered = {slot_a, slot_b},
+      };
   }
 }
 

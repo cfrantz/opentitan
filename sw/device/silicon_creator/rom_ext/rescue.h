@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include "sw/device/silicon_creator/lib/error.h"
+#include "sw/device/silicon_creator/lib/boot_data.h"
 
 enum {
   // Rescue is signalled by asserting serial break to the UART for at least
@@ -43,6 +44,6 @@ typedef struct RescueState {
   uint8_t data[2048];
 } rescue_state_t;
 
-rom_error_t rescue_protocol(void);
+rom_error_t rescue_protocol(boot_data_t *bootdata);
 
 #endif  // OPENTITAN_SW_DEVICE_SILICON_CREATOR_ROM_EXT_RESCUE_H_

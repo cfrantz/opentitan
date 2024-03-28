@@ -10,6 +10,9 @@
 #include "sw/device/silicon_creator/lib/drivers/retention_sram.h"
 #include "sw/device/silicon_creator/lib/drivers/rstmgr.h"
 #include "sw/device/silicon_creator/lib/xmodem.h"
+#include "sw/device/silicon_creator/lib/boot_data.h"
+#include "sw/device/silicon_creator/lib/ownership/datatypes.h"
+
 
 #include "flash_ctrl_regs.h"
 
@@ -45,18 +48,22 @@ rom_error_t flash_firmware_block(rescue_state_t *state) {
   return kErrorOk;
 }
 
-rom_error_t flash_owner_block(rescue_state_t *state) {
-  // FIXME: validate that we're in a state capable of accepting an owner
-  // block and validate the block before flashing it.
+rom_error_t flash_owner_block(rescue_state_t *state, boot_data_t *bootdata) {
+  if (bootdata->ownership_state == kOwnershipStateUnlockedAny ||
+      bootdata->ownership_state == kOwnershipStateLockedUpdate ||
+      bootdata->ownership_state == kOwnershipStateUnlockedEndorsed) {
   HARDENED_RETURN_IF_ERROR(flash_ctrl_info_erase(&kFlashCtrlInfoPageOwnerSlot1,
                                                  kFlashCtrlEraseTypePage));
   HARDENED_RETURN_IF_ERROR(flash_ctrl_info_write(
       &kFlashCtrlInfoPageOwnerSlot1, 0, sizeof(state->data) / sizeof(uint32_t),
       state->data));
+  } else {
+          dbg_printf("error: cannot accept owner_block in current state\r\n");
+  }
   return kErrorOk;
 }
 
-static void validate_mode(uint32_t mode, rescue_state_t *state) {
+static void validate_mode(uint32_t mode, rescue_state_t *state, boot_data_t *bootdata) {
   dbg_printf("\r\nmode: %C\r\n", bitfield_byteswap32(mode));
   switch (mode) {
     case kRescueModeBootLog:
@@ -69,7 +76,14 @@ static void validate_mode(uint32_t mode, rescue_state_t *state) {
       dbg_printf("ok: send boot_svc request via xmodem-crc\r\n");
       break;
     case kRescueModeOwnerBlock:
-      dbg_printf("ok: send owner_block via xmodem-crc\r\n");
+      if (bootdata->ownership_state == kOwnershipStateUnlockedAny ||
+          bootdata->ownership_state == kOwnershipStateLockedUpdate ||
+          bootdata->ownership_state == kOwnershipStateUnlockedEndorsed) {
+          dbg_printf("ok: send owner_block via xmodem-crc\r\n");
+      } else {
+          dbg_printf("error: cannot accept owner_block in current state\r\n");
+          return;
+      }
       break;
     case kRescueModeFirmware:
       dbg_printf("ok: send firmware via xmodem-crc\r\n");
@@ -92,7 +106,7 @@ static void validate_mode(uint32_t mode, rescue_state_t *state) {
   state->flash_offset = 0;
 }
 
-static rom_error_t handle_send_modes(rescue_state_t *state) {
+static rom_error_t handle_send_modes(rescue_state_t *state, boot_data_t *bootdata) {
   const retention_sram_t *rr = retention_sram_get();
   switch (state->mode) {
     case kRescueModeBootLog:
@@ -116,11 +130,11 @@ static rom_error_t handle_send_modes(rescue_state_t *state) {
       // This state should be impossible.
       return kErrorRescueBadMode;
   }
-  validate_mode(kRescueModeFirmware, state);
+  validate_mode(kRescueModeFirmware, state, bootdata);
   return kErrorOk;
 }
 
-static rom_error_t handle_recv_modes(rescue_state_t *state) {
+static rom_error_t handle_recv_modes(rescue_state_t *state, boot_data_t *bootdata) {
   retention_sram_t *rr = retention_sram_get();
   switch (state->mode) {
     case kRescueModeBootLog:
@@ -136,7 +150,7 @@ static rom_error_t handle_recv_modes(rescue_state_t *state) {
       break;
     case kRescueModeOwnerBlock:
       if (state->offset == sizeof(state->data)) {
-        HARDENED_RETURN_IF_ERROR(flash_owner_block(state));
+        HARDENED_RETURN_IF_ERROR(flash_owner_block(state, bootdata));
         state->offset = 0;
       }
       break;
@@ -154,13 +168,13 @@ static rom_error_t handle_recv_modes(rescue_state_t *state) {
   return kErrorOk;
 }
 
-static rom_error_t protocol(rescue_state_t *state) {
+static rom_error_t protocol(rescue_state_t *state, boot_data_t *bootdata) {
   rom_error_t result;
   size_t rxlen;
   uint8_t command;
   uint32_t next_mode = 0;
 
-  validate_mode(kRescueModeFirmware, &rescue_state);
+  validate_mode(kRescueModeFirmware, &rescue_state, bootdata);
 
   // The rescue region starts immediately after the ROM_EXT and ends
   // at the end of the flash bank.
@@ -170,7 +184,7 @@ static rom_error_t protocol(rescue_state_t *state) {
 
   xmodem_recv_start(iohandle);
   while (true) {
-    HARDENED_RETURN_IF_ERROR(handle_send_modes(&rescue_state));
+    HARDENED_RETURN_IF_ERROR(handle_send_modes(&rescue_state, bootdata));
     result = xmodem_recv_frame(iohandle, state->frame,
                                state->data + state->offset, &rxlen, &command);
     if (state->frame == 1 && result == kErrorXModemTimeoutStart) {
@@ -181,7 +195,7 @@ static rom_error_t protocol(rescue_state_t *state) {
       case kErrorOk:
         // Packet ok.
         state->offset += rxlen;
-        HARDENED_RETURN_IF_ERROR(handle_recv_modes(&rescue_state));
+        HARDENED_RETURN_IF_ERROR(handle_recv_modes(&rescue_state, bootdata));
         xmodem_ack(iohandle, true);
         break;
       case kErrorXModemEndOfFile:
@@ -191,7 +205,7 @@ static rom_error_t protocol(rescue_state_t *state) {
           while (state->offset % 2048 != 0) {
             state->data[state->offset++] = 0xFF;
           }
-          HARDENED_RETURN_IF_ERROR(handle_recv_modes(&rescue_state));
+          HARDENED_RETURN_IF_ERROR(handle_recv_modes(&rescue_state, bootdata));
         }
         xmodem_ack(iohandle, true);
         return kErrorRescueReboot;
@@ -203,7 +217,7 @@ static rom_error_t protocol(rescue_state_t *state) {
       case kErrorXModemUnknown:
         if (state->frame == 1) {
           if (command == '\r') {
-            validate_mode(next_mode, &rescue_state);
+            validate_mode(next_mode, &rescue_state, bootdata);
             next_mode = 0;
           } else {
             next_mode = (next_mode << 8) | command;
@@ -218,8 +232,8 @@ static rom_error_t protocol(rescue_state_t *state) {
   }
 }
 
-rom_error_t rescue_protocol(void) {
-  rom_error_t result = protocol(&rescue_state);
+rom_error_t rescue_protocol(boot_data_t *bootdata) {
+  rom_error_t result = protocol(&rescue_state, bootdata);
   if (result == kErrorRescueReboot) {
     rstmgr_reset();
   }

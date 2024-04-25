@@ -209,20 +209,28 @@ static rom_error_t rom_ext_init(boot_data_t *boot_data) {
   return kErrorOk;
 }
 
-void rom_ext_sram_exec(hardened_bool_t enable) {
-  switch (enable) {
-    case kHardenedBoolTrue:
-      // In the case where we enable SRAM exec, we do not lock the register as
-      // some later code may want to disable it.
-      HARDENED_CHECK_EQ(enable, kHardenedBoolTrue);
+void rom_ext_sram_exec(owner_sram_exec_mode_t mode) {
+  switch (mode) {
+    case kOwnerSramExecModeEnabled:
+      // In enabled mode, we do not lock the register so owner code can disable
+      // SRAM exec at some later time.
+      HARDENED_CHECK_EQ(mode, kOwnerSramExecModeEnabled);
       sec_mmio_write32(TOP_EARLGREY_SRAM_CTRL_MAIN_REGS_BASE_ADDR +
                            SRAM_CTRL_EXEC_REG_OFFSET,
                        kMultiBitBool4True);
       break;
-    case kHardenedBoolFalse:
-      // In the case where we disable SRAM exec, we lock the register so that it
-      // cannot be re-enabled later.
-      HARDENED_CHECK_EQ(enable, kHardenedBoolFalse);
+    case kOwnerSramExecModeDisabled:
+      // In disabled mode, we do not lock the register so owner code can enable
+      // SRAM exec at some later time.
+      HARDENED_CHECK_EQ(mode, kOwnerSramExecModeDisabled);
+      sec_mmio_write32(TOP_EARLGREY_SRAM_CTRL_MAIN_REGS_BASE_ADDR +
+                           SRAM_CTRL_EXEC_REG_OFFSET,
+                       kMultiBitBool4False);
+      break;
+    case kOwnerSramExecModeDisabledLocked:
+    default:
+      // In disabled locked mode, we lock the register so the mode cannot be
+      // changed.
       sec_mmio_write32(TOP_EARLGREY_SRAM_CTRL_MAIN_REGS_BASE_ADDR +
                            SRAM_CTRL_EXEC_REG_OFFSET,
                        kMultiBitBool4False);
@@ -230,8 +238,6 @@ void rom_ext_sram_exec(hardened_bool_t enable) {
                            SRAM_CTRL_EXEC_REGWEN_REG_OFFSET,
                        0);
       break;
-    default:
-      HARDENED_TRAP();
   }
 }
 
@@ -557,9 +563,6 @@ static rom_error_t rom_ext_boot(const manifest_t *manifest) {
   rom_ext_epmp_clear_rlb();
   HARDENED_RETURN_IF_ERROR(epmp_state_check());
 
-  // Forbid code execution from SRAM.
-  rom_ext_sram_exec(kHardenedBoolFalse);
-
   // Lock the address translation windows.
   ibex_addr_remap_lockdown(0);
   ibex_addr_remap_lockdown(1);
@@ -792,6 +795,8 @@ static rom_error_t rom_ext_start(boot_data_t *boot_data, boot_log_t *boot_log) {
   if (error == kErrorWriteBootdataThenReboot) {
     return error;
   }
+  // Configure SRAM execution as the owner requested.
+  rom_ext_sram_exec(owner_config.sram_exec);
 
   // Handle any pending boot_svc commands.
   error = handle_boot_svc(boot_data);

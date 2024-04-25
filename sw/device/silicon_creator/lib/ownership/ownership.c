@@ -83,7 +83,6 @@ static rom_error_t locked_owner_init(boot_data_t *bootdata,
   HARDENED_RETURN_IF_ERROR(owner_block_flash_apply(config->flash, kBootSlotB,
                                                    bootdata->primary_bl0_slot));
   HARDENED_RETURN_IF_ERROR(owner_block_info_apply(config->info));
-  // TODO: apply SRAM exec config
   // TODO: apply rescue config
   return kErrorOk;
 }
@@ -156,7 +155,6 @@ static rom_error_t unlocked_init(boot_data_t *bootdata, owner_config_t *config,
   HARDENED_RETURN_IF_ERROR(owner_block_flash_apply(config->flash, secondary,
                                                    bootdata->primary_bl0_slot));
   HARDENED_RETURN_IF_ERROR(owner_block_info_apply(config->info));
-  // TODO: apply SRAM exec config
   // TODO: apply rescue config
   return kErrorOk;
 }

@@ -126,6 +126,8 @@ def _parameter_name(env, pname):
         (_, suffix) = env.split(":")
         if "cw310" in suffix:
             pname = "cw310"
+        elif "hyper310" in suffix:
+            pname = "hyper310"
         elif "cw340" in suffix:
             pname = "cw340"
         elif "verilator" in suffix:

@@ -188,6 +188,20 @@ rust_bindgen_library(
 )
 
 rust_bindgen_library(
+    name = "rom_error",
+    bindgen_flags = [
+        "--allowlist-type=rom_error_t",
+    ],
+    cc_lib = "//sw/device/silicon_creator/lib:error",
+    header = "//sw/device/silicon_creator/lib:error.h",
+    rustc_flags = [
+        "--allow=non_snake_case",
+        "--allow=non_upper_case_globals",
+        "--allow=non_camel_case_types",
+    ],
+)
+
+rust_bindgen_library(
     name = "sram_program",
     bindgen_flags = [
         "--allowlist-var=SRAM_MAGIC_SP_.*",
@@ -250,6 +264,7 @@ rust_library(
         ":earlgrey",
         ":hardened",
         ":multibits",
+        ":rom_error",
         ":sram_program",
         ":status",
         ":test_status",

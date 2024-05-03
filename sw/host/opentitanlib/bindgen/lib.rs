@@ -7,6 +7,7 @@ pub use dif;
 pub use earlgrey;
 pub use hardened;
 pub use multibits;
+pub use rom_error;
 pub use sram_program;
 pub use status;
 pub use test_status;

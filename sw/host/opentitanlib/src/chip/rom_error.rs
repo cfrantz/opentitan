@@ -3,16 +3,19 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::with_unknown;
+use std::error::Error;
 
 with_unknown! {
     /// From `//sw/device/silicon_creator/lib/error.h`
     pub enum RomError: u32 [default = Self::Unknown] {
-        // The following list of enumerators can be generated with:
-        //
-        // bazel build //sw/host/opentitanlib/bindgen:rom_error
-        // cat bazel-bin/sw/host/opentitanlib/bindgen/rom_error__bindgen.rs \
-        //     | grep const \
-        //     | sed -E 's/^pub const (rom_error_kError([^:]+)).*$/\2 = bindgen::rom_error::\1,/g'
+        /*
+         * The following list of enumerators can be generated with:
+         *
+         $ bazel build //sw/host/opentitanlib/bindgen:rom_error
+         $ cat bazel-bin/sw/host/opentitanlib/bindgen/rom_error__bindgen.rs \
+              | grep const \
+              | sed -E 's/^pub const (rom_error_kError([^:]+)).*$/\2 = bindgen::rom_error::\1,/g'
+         */
 
         Ok = bindgen::rom_error::rom_error_kErrorOk,
         WriteBootdataThenReboot = bindgen::rom_error::rom_error_kErrorWriteBootdataThenReboot,
@@ -95,7 +98,7 @@ with_unknown! {
         RescueReboot = bindgen::rom_error::rom_error_kErrorRescueReboot,
         RescueBadMode = bindgen::rom_error::rom_error_kErrorRescueBadMode,
         RescueImageTooBig = bindgen::rom_error::rom_error_kErrorRescueImageTooBig,
-        DiceInvalidArgument = bindgen::rom_error::rom_error_kErrorDiceInvalidArgument,
+        DiceInvalidKeyType = bindgen::rom_error::rom_error_kErrorDiceInvalidKeyType,
         CertInternal = bindgen::rom_error::rom_error_kErrorCertInternal,
         CertInvalidArgument = bindgen::rom_error::rom_error_kErrorCertInvalidArgument,
         OwnershipInvalidNonce = bindgen::rom_error::rom_error_kErrorOwnershipInvalidNonce,
@@ -111,5 +114,28 @@ with_unknown! {
         OwnershipBadInfoPage = bindgen::rom_error::rom_error_kErrorOwnershipBadInfoPage,
         OwnershipNoOwner = bindgen::rom_error::rom_error_kErrorOwnershipNoOwner,
         OwnershipKeyNotFound = bindgen::rom_error::rom_error_kErrorOwnershipKeyNotFound,
+
+    }
+}
+
+impl Error for RomError {}
+
+impl From<RomError> for Result<(), RomError> {
+    fn from(error: RomError) -> Self {
+        if error == RomError::Ok {
+            Ok(())
+        } else {
+            Err(error)
+        }
+    }
+}
+
+impl From<RomError> for Result<(), anyhow::Error> {
+    fn from(error: RomError) -> Self {
+        if error == RomError::Ok {
+            Ok(())
+        } else {
+            Err(error.into())
+        }
     }
 }

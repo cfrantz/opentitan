@@ -162,6 +162,7 @@ def opentitan_test(
         kind = "flash",
         deps = [],
         copts = [],
+        data = [],
         defines = [],
         local_defines = [],
         includes = [],

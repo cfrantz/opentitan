@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::with_unknown;
+use std::error::Error;
 
 with_unknown! {
     /// From `//sw/device/silicon_creator/lib/error.h`
@@ -12,8 +13,8 @@ with_unknown! {
          *
          $ bazel build //sw/host/opentitanlib/bindgen:rom_error
          $ cat bazel-bin/sw/host/opentitanlib/bindgen/rom_error__bindgen.rs \
-               | grep const \
-               | sed -E 's/^pub const (rom_error_kError([^:]+)).*$/\2 = bindgen::rom_error::\1,/g'
+              | grep const \
+              | sed -E 's/^pub const (rom_error_kError([^:]+)).*$/\2 = bindgen::rom_error::\1,/g'
          */
 
         Ok = bindgen::rom_error::rom_error_kErrorOk,
@@ -117,5 +118,27 @@ with_unknown! {
         OwnershipNoOwner = bindgen::rom_error::rom_error_kErrorOwnershipNoOwner,
         OwnershipKeyNotFound = bindgen::rom_error::rom_error_kErrorOwnershipKeyNotFound,
 
+    }
+}
+
+impl Error for RomError {}
+
+impl From<RomError> for Result<(), RomError> {
+    fn from(error: RomError) -> Self {
+        if error == RomError::Ok {
+            Ok(())
+        } else {
+            Err(error)
+        }
+    }
+}
+
+impl From<RomError> for Result<(), anyhow::Error> {
+    fn from(error: RomError) -> Self {
+        if error == RomError::Ok {
+            Ok(())
+        } else {
+            Err(error.into())
+        }
     }
 }

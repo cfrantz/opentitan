@@ -10,6 +10,7 @@ use std::convert::TryFrom;
 use std::io::{Read, Write};
 
 use super::misc::{TlvHeader, TlvTag};
+use crate::chip::boot_svc::BootSvcKind;
 use crate::with_unknown;
 
 with_unknown! {
@@ -20,17 +21,20 @@ with_unknown! {
 
     pub enum CommandTag: u32 [default = Self::Unknown] {
         Unknown = 0,
-        Empty = 0xb4594546,
-        MinBl0SecVerRequest = 0xdac59e6e,
-        NextBl0SlotRequest = 0xe1edf546,
-        PrimaryBl0SlotRequest = 0x3d6c47b8,
-        UnlockOwnershipRequest = 0x51524e55,
-        ActivateOwnerRequest = 0x51524f41,
-        Rescue = u32::from_le_bytes(*b"RESQ"),
-        GetBootLog = u32::from_le_bytes(*b"BLOG"),
-        BootSvcReq = u32::from_le_bytes(*b"BREQ"),
-        BootSvcRsp = u32::from_le_bytes(*b"BRSP"),
-        OwnerBlock = u32::from_le_bytes(*b"OWNR"),
+        Empty = BootSvcKind::Empty.0,
+        MinBl0SecVerRequest =    BootSvcKind::MinBl0SecVerRequest.0,
+        NextBl0SlotRequest =     BootSvcKind::NextBl0SlotRequest.0,
+        PrimaryBl0SlotRequest =  BootSvcKind::PrimaryBl0SlotRequest.0,
+        OwnershipUnlockRequest = BootSvcKind::OwnershipUnlockRequest.0,
+        OwnershipActivateRequest =   BootSvcKind::OwnershipActivateRequest.0,
+
+        // The rescue protocol-level commands are represented in big-endian order.
+        Rescue = u32::from_be_bytes(*b"RESQ"),
+        Reboot = u32::from_be_bytes(*b"REBO"),
+        GetBootLog = u32::from_be_bytes(*b"BLOG"),
+        BootSvcReq = u32::from_be_bytes(*b"BREQ"),
+        BootSvcRsp = u32::from_be_bytes(*b"BRSP"),
+        OwnerBlock = u32::from_be_bytes(*b"OWNR"),
     }
 }
 
@@ -108,8 +112,8 @@ impl OwnerRescueConfig {
                 CommandTag::MinBl0SecVerRequest,
                 CommandTag::NextBl0SlotRequest,
                 CommandTag::PrimaryBl0SlotRequest,
-                CommandTag::UnlockOwnershipRequest,
-                CommandTag::ActivateOwnerRequest,
+                CommandTag::OwnershipUnlockRequest,
+                CommandTag::OwnershipActivateRequest,
                 CommandTag::Rescue,
                 CommandTag::GetBootLog,
                 CommandTag::BootSvcReq,
@@ -145,8 +149,8 @@ mod test {
     "MinBl0SecVerRequest",
     "NextBl0SlotRequest",
     "PrimaryBl0SlotRequest",
-    "UnlockOwnershipRequest",
-    "ActivateOwnerRequest",
+    "OwnershipUnlockRequest",
+    "OwnershipActivateRequest",
     "Rescue",
     "GetBootLog",
     "BootSvcReq",
@@ -167,8 +171,8 @@ mod test {
                 CommandTag::MinBl0SecVerRequest,
                 CommandTag::NextBl0SlotRequest,
                 CommandTag::PrimaryBl0SlotRequest,
-                CommandTag::UnlockOwnershipRequest,
-                CommandTag::ActivateOwnerRequest,
+                CommandTag::OwnershipUnlockRequest,
+                CommandTag::OwnershipActivateRequest,
                 CommandTag::Rescue,
                 CommandTag::GetBootLog,
                 CommandTag::BootSvcReq,

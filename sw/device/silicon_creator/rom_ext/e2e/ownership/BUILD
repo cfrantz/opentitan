@@ -33,6 +33,24 @@ opentitan_binary(
     ],
 )
 
+opentitan_binary(
+    name = "flash_regions",
+    testonly = True,
+    srcs = ["flash_regions.c"],
+    exec_env = {
+        "//hw/top_earlgrey:fpga_cw310_rom_ext": None,
+    },
+    rsa_key = {
+        "//sw/device/silicon_creator/lib/ownership/keys/dummy:app_prod": "app_prod",
+    },
+    deps = [
+        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//sw/device/lib/base:status",
+        "//sw/device/lib/dif:flash_ctrl",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+    ],
+)
+
 ownership_transfer_test(
     name = "transfer_any_test",
     cw310 = cw310_params(
@@ -277,7 +295,7 @@ ownership_transfer_test(
     ),
     linker_script = "//sw/device/lib/testing/test_framework:ottf_ld_silicon_owner_slot_b",
     deps = [
-        "//hw/top_earlgrey/ip/flash_ctrl/data/autogen:flash_ctrl_regs",
+        "//hw/top_earlgrey/ip_autogen/flash_ctrl/data:flash_ctrl_c_regs",
         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
         "//sw/device/lib/base:status",
         "//sw/device/lib/testing/test_framework:ottf_main",
@@ -301,4 +319,33 @@ ownership_transfer_test(
         """,
         test_harness = "//sw/host/tests/ownership:rescue_permission_test",
     ),
+)
+
+ownership_transfer_test(
+    name = "flash_permission_test",
+    srcs = ["flash_regions.c"],
+    cw310 = cw310_params(
+        binaries = {
+            ":flash_regions": "flash_regions",
+        },
+        test_cmd = """
+            --clear-bitstream
+            --bootstrap={firmware}
+            --unlock-mode=Any
+            --unlock-key=$(location //sw/device/silicon_creator/lib/ownership/keys/fake:unlock_key)
+            --next-owner-key=$(location //sw/device/silicon_creator/lib/ownership/keys/dummy:owner_key)
+            --next-unlock-key=$(location //sw/device/silicon_creator/lib/ownership/keys/dummy:unlock_key)
+            --next-activate-key=$(location //sw/device/silicon_creator/lib/ownership/keys/dummy:activate_key)
+            --next-application-key=$(location //sw/device/silicon_creator/lib/ownership/keys/dummy:app_prod_pub)
+            --style=with-flash
+            --rescue-after-activate={flash_regions}
+        """,
+        test_harness = "//sw/host/tests/ownership:flash_permission_test",
+    ),
+    deps = [
+        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//sw/device/lib/base:status",
+        "//sw/device/lib/dif:flash_ctrl",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+    ],
 )

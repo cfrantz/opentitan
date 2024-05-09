@@ -122,7 +122,8 @@ rom_error_t rom_ext_bootstrap(void) {
           .write = kMultiBitBool4True,
           .erase = kMultiBitBool4True,
       },
-      default_cfg);
+      default_cfg,
+      /*lock=*/kHardenedBoolFalse);
 
   // The region of slot B following the ROM_EXT region is erasable, but not
   // programmable.
@@ -135,7 +136,8 @@ rom_error_t rom_ext_bootstrap(void) {
           .write = kMultiBitBool4False,
           .erase = kMultiBitBool4True,
       },
-      default_cfg);
+      default_cfg,
+      /*lock=*/kHardenedBoolFalse);
 
   // With the lowest priority, disable programming and erasing the flash.
   flash_ctrl_data_region_protect(
@@ -148,7 +150,8 @@ rom_error_t rom_ext_bootstrap(void) {
           .write = kMultiBitBool4False,
           .erase = kMultiBitBool4False,
       },
-      default_cfg);
+      default_cfg,
+      /*lock=*/kHardenedBoolFalse);
 
   return enter_bootstrap();
 }

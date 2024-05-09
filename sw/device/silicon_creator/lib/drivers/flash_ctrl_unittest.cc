@@ -974,7 +974,8 @@ TEST_P(DataRegionProtectTestSuite, ProtectRegionReadWriteEraseEnabled) {
           .scrambling = BoolToMultiBitBool4(kFlashScrambling),
           .ecc = BoolToMultiBitBool4(kFlashEcc),
           .he = BoolToMultiBitBool4(kFlashHe),
-      });
+      },
+      kHardenedBoolFalse);
 }
 
 }  // namespace

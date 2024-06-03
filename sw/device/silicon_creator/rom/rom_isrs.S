@@ -2,7 +2,13 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+#include "hw/top_earlgrey/sw/autogen/top_earlgrey_memory.h"
 #include "sw/device/lib/base/macros.h"
+#include "flash_ctrl_regs.h"
+
+.equ LOAD_ACCESS_FAULT, 5
+.equ PHY_ERRORS, (1 << FLASH_CTRL_FAULT_STATUS_PHY_STORAGE_ERR_BIT) | \
+                 (1 << FLASH_CTRL_FAULT_STATUS_PHY_RELBL_ERR_BIT)
 
 // NOTE: The "ax" flag below is necessary to ensure that this section
 // is allocated executable space in ROM by the linker.
@@ -72,9 +78,20 @@ rom_exception_handler_entry:
 
   sw t0, 0(sp)
 
-  // Jump to the exception handler.
-  mv a0, sp
-  jal rom_exception_handler
+  // Get the mcause, mask the reason and check that it is LoadAccessFault.
+  csrr t1, mcause
+  andi t1, t1, 31
+  li t2, LOAD_ACCESS_FAULT
+  bne t1, t2, .L_not_a_flash_error
+
+  // Check if there is a flash error.
+  li t3, TOP_EARLGREY_FLASH_CTRL_CORE_BASE_ADDR
+  lw t1, FLASH_CTRL_FAULT_STATUS_REG_OFFSET(t3)
+  andi t1, t1, PHY_ERRORS
+  beqz t1, .L_not_a_flash_error
+
+  // Clear the flash error and return to normal execution
+  sw t1, FLASH_CTRL_FAULT_STATUS_REG_OFFSET(t3)
 
   /**
    * Exception handler exit sub-routine restores registers from the stack.
@@ -121,4 +138,8 @@ rom_exception_handler_entry:
   // This exits the ISR completely, and does not return control flow to the ISR
   // that called this sub-routine.
   mret
+
+.L_not_a_flash_error:
+  j rom_interrupt_handler
+
   .size rom_exception_handler_entry, .-rom_exception_handler_entry

@@ -74,9 +74,13 @@ cc_library(
     name = "rom_isrs",
     srcs = [
         "rom_isrs.S",
-        "//sw/device/lib/base:macros.h",
     ],
     target_compatible_with = [OPENTITAN_CPU],
+    deps = [
+        "//sw/device/lib/base:macros",
+        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//hw/top_earlgrey/ip_autogen/flash_ctrl/data:flash_ctrl_c_regs",
+    ],
 )
 
 cc_library(
@@ -431,6 +435,17 @@ output_groups(
         "fpga_cw340_binary",
         "sim_dv_binary",
         "sim_verilator_binary",
+    ],
+)
+
+output_groups(
+    name = "mask_rom_disassembly",
+    srcs = [":mask_rom"],
+    groups = [
+        "fpga_cw310_disassembly",
+        "fpga_cw340_disassembly",
+        "sim_dv_disassembly",
+        "sim_verilator_disassembly",
     ],
 )
 

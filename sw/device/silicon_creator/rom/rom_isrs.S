@@ -7,6 +7,9 @@
 #include "flash_ctrl_regs.h"
 
 .equ LOAD_ACCESS_FAULT, 5
+
+// If we get an ECC error reading from internal flash, one of these bits
+// will be set in the flash controller's FAULT_STATUS register.
 .equ PHY_ERRORS, (1 << FLASH_CTRL_FAULT_STATUS_PHY_STORAGE_ERR_BIT) | \
                  (1 << FLASH_CTRL_FAULT_STATUS_PHY_RELBL_ERR_BIT)
 
@@ -25,38 +28,10 @@
 rom_exception_handler_entry:
   // Save all registers to the stack.
   addi sp, sp, -OT_CONTEXT_SIZE
-  sw   ra,  1 * OT_WORD_SIZE(sp)
   sw   t0,  2 * OT_WORD_SIZE(sp)
   sw   t1,  3 * OT_WORD_SIZE(sp)
   sw   t2,  4 * OT_WORD_SIZE(sp)
-  sw   s0,  5 * OT_WORD_SIZE(sp)
-  sw   s1,  6 * OT_WORD_SIZE(sp)
-  sw   a0,  7 * OT_WORD_SIZE(sp)
-  sw   a1,  8 * OT_WORD_SIZE(sp)
-  sw   a2,  9 * OT_WORD_SIZE(sp)
-  sw   a3, 10 * OT_WORD_SIZE(sp)
-  sw   a4, 11 * OT_WORD_SIZE(sp)
-  sw   a5, 12 * OT_WORD_SIZE(sp)
-  sw   a6, 13 * OT_WORD_SIZE(sp)
-  sw   a7, 14 * OT_WORD_SIZE(sp)
-  sw   s2, 15 * OT_WORD_SIZE(sp)
-  sw   s3, 16 * OT_WORD_SIZE(sp)
-  sw   s4, 17 * OT_WORD_SIZE(sp)
-  sw   s5, 18 * OT_WORD_SIZE(sp)
-  sw   s6, 19 * OT_WORD_SIZE(sp)
-  sw   s7, 20 * OT_WORD_SIZE(sp)
-  sw   s8, 21 * OT_WORD_SIZE(sp)
-  sw   s9, 22 * OT_WORD_SIZE(sp)
-  sw  s10, 23 * OT_WORD_SIZE(sp)
-  sw  s11, 24 * OT_WORD_SIZE(sp)
-  sw   t3, 25 * OT_WORD_SIZE(sp)
-  sw   t4, 26 * OT_WORD_SIZE(sp)
-  sw   t5, 27 * OT_WORD_SIZE(sp)
-  sw   t6, 28 * OT_WORD_SIZE(sp)
-
-  // Save MSTATUS for the MPIE bit.
-  csrr t0, mstatus
-  sw t0, 29 * OT_WORD_SIZE(sp)
+  sw   t3,  5 * OT_WORD_SIZE(sp)
 
   /**
    * Compute the MEPC of the instruction after the fault.
@@ -73,10 +48,9 @@ rom_exception_handler_entry:
   li t1, 0x3
   and t3, t2, t1
   bne t3, t1, .L_rom_16bit_trap_instr
-  addi t0, t0, OT_WORD_SIZE
+  // We already added one half word, so for a 32-bit instruction, add another.
+  addi t0, t0, OT_HALF_WORD_SIZE
 .L_rom_16bit_trap_instr:
-
-  sw t0, 0(sp)
 
   // Get the mcause, mask the reason and check that it is LoadAccessFault.
   csrr t1, mcause
@@ -90,53 +64,19 @@ rom_exception_handler_entry:
   andi t1, t1, PHY_ERRORS
   beqz t1, .L_not_a_flash_error
 
-  // Clear the flash error and return to normal execution
+  // Clear the flash error.
   sw t1, FLASH_CTRL_FAULT_STATUS_REG_OFFSET(t3)
 
-  /**
-   * Exception handler exit sub-routine restores registers from the stack.
-   */
+  // Exception handler exit and return to C:
   // Load the correct MEPC for the next instruction in the current task.
-  lw t0, 0(sp)
   csrw mepc, t0
 
-  // Load MSTATUS for the MPIE bit.
-  lw  t0, 29 * OT_WORD_SIZE(sp)
-  csrw mstatus, t0
-
   // Restore all registers from the stack.
-  lw   ra,  1 * OT_WORD_SIZE(sp)
   lw   t0,  2 * OT_WORD_SIZE(sp)
   lw   t1,  3 * OT_WORD_SIZE(sp)
   lw   t2,  4 * OT_WORD_SIZE(sp)
-  lw   s0,  5 * OT_WORD_SIZE(sp)
-  lw   s1,  6 * OT_WORD_SIZE(sp)
-  lw   a0,  7 * OT_WORD_SIZE(sp)
-  lw   a1,  8 * OT_WORD_SIZE(sp)
-  lw   a2,  9 * OT_WORD_SIZE(sp)
-  lw   a3, 10 * OT_WORD_SIZE(sp)
-  lw   a4, 11 * OT_WORD_SIZE(sp)
-  lw   a5, 12 * OT_WORD_SIZE(sp)
-  lw   a6, 13 * OT_WORD_SIZE(sp)
-  lw   a7, 14 * OT_WORD_SIZE(sp)
-  lw   s2, 15 * OT_WORD_SIZE(sp)
-  lw   s3, 16 * OT_WORD_SIZE(sp)
-  lw   s4, 17 * OT_WORD_SIZE(sp)
-  lw   s5, 18 * OT_WORD_SIZE(sp)
-  lw   s6, 19 * OT_WORD_SIZE(sp)
-  lw   s7, 20 * OT_WORD_SIZE(sp)
-  lw   s8, 21 * OT_WORD_SIZE(sp)
-  lw   s9, 22 * OT_WORD_SIZE(sp)
-  lw  s10, 23 * OT_WORD_SIZE(sp)
-  lw  s11, 24 * OT_WORD_SIZE(sp)
-  lw   t3, 25 * OT_WORD_SIZE(sp)
-  lw   t4, 26 * OT_WORD_SIZE(sp)
-  lw   t5, 27 * OT_WORD_SIZE(sp)
-  lw   t6, 28 * OT_WORD_SIZE(sp)
+  lw   t3,  5 * OT_WORD_SIZE(sp)
   addi sp, sp, OT_CONTEXT_SIZE
-
-  // This exits the ISR completely, and does not return control flow to the ISR
-  // that called this sub-routine.
   mret
 
 .L_not_a_flash_error:

@@ -11,37 +11,6 @@
 // -----------------------------------------------------------------------------
 
   /**
-   * Compute the MEPC that will be saved to the stack by the associated ISR
-   * handler sub-routine below.
-   *
-   * This subroutine is only invoked for IRQs that are synchronous. Specifically,
-   * this subroutine updates the ISR return address to point to the instruction
-   * after the trapped instruction to prevent an endless interrupt cycle.
-   *
-   * Since we support the RISC-V compressed instructions extension, we need to
-   * check if the two least significant bits of the instruction are
-   * b11 (0x3), which means that the trapped instruction is not compressed,
-   * i.e., the trapped instruction is 32bits = 4bytes. Otherwise, the trapped
-   * instruction is 16bits = 2bytes.
-   */
-  .balign 4
-  .type rom_compute_mepc_on_synchronous_irq, @function
-rom_compute_mepc_on_synchronous_irq:
-  csrr t0, mepc
-  lh t2, 0(t0)
-  li t1, 0x3
-  and t3, t2, t1
-  beq t3, t1, .L_rom_32bit_trap_instr
-  addi t0, t0, OT_HALF_WORD_SIZE
-  ret
-.L_rom_32bit_trap_instr:
-  addi t0, t0, OT_WORD_SIZE
-  ret
-  .size rom_compute_mepc_on_synchronous_irq, .-rom_compute_mepc_on_synchronous_irq
-
-// -----------------------------------------------------------------------------
-
-  /**
    * Exception handler.
    */
   .balign 4
@@ -83,28 +52,33 @@ rom_exception_handler_entry:
   csrr t0, mstatus
   sw t0, 29 * OT_WORD_SIZE(sp)
 
-  // Save MEPC to the stack after updating it to the next instruction (since
-  // this is a synchronous IRQ).
-  jal rom_compute_mepc_on_synchronous_irq
+  /**
+   * Compute the MEPC of the instruction after the fault.
+   *
+   * Since we support the RISC-V compressed instructions extension, we need to
+   * check if the two least significant bits of the instruction are
+   * b11 (0x3), which means that the trapped instruction is not compressed,
+   * i.e., the trapped instruction is 32bits = 4bytes. Otherwise, the trapped
+   * instruction is 16bits = 2bytes.
+   */
+  csrr t0, mepc
+  lh t2, 0(t0)
+  addi t0, t0, OT_HALF_WORD_SIZE
+  li t1, 0x3
+  and t3, t2, t1
+  bne t3, t1, .L_rom_16bit_trap_instr
+  addi t0, t0, OT_WORD_SIZE
+.L_rom_16bit_trap_instr:
+
   sw t0, 0(sp)
 
   // Jump to the exception handler.
   mv a0, sp
   jal rom_exception_handler
 
-  // Return from exception handler.
-  j rom_exception_handler_exit
-  .size rom_exception_handler_entry, .-rom_exception_handler_entry
-
-// -----------------------------------------------------------------------------
-
   /**
    * Exception handler exit sub-routine restores registers from the stack.
    */
-  .balign 4
-  .global rom_exception_handler_exit
-  .type rom_exception_handler_exit, @function
-rom_exception_handler_exit:
   // Load the correct MEPC for the next instruction in the current task.
   lw t0, 0(sp)
   csrw mepc, t0
@@ -147,4 +121,4 @@ rom_exception_handler_exit:
   // This exits the ISR completely, and does not return control flow to the ISR
   // that called this sub-routine.
   mret
-  .size rom_exception_handler_exit, .-rom_exception_handler_exit
+  .size rom_exception_handler_entry, .-rom_exception_handler_entry

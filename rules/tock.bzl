@@ -57,6 +57,8 @@ def _tock_elf2tab_impl(ctx):
         args.append("--verbose")
     if ctx.attr.disable:
         args.append("--disable")
+    if ctx.attr.size_multiple:
+        args.append("--total-size-multiple={}".format(ctx.attr.size_multiple))
     args.append("{},{}".format(elffile.path, ctx.attr.arch))
 
     ctx.actions.run(
@@ -84,6 +86,7 @@ tock_elf2tab = rule(
         "package_name": attr.string(default = "", doc = "Package name"),
         "protected_region_size": attr.int(doc = "Size of the TBF header"),
         "stack": attr.int(default = 0, doc = "Stack size"),
+        "size_multiple": attr.int(default = 0, doc = "Size the TBF to be a mutliple of this size"),
         "verbose": attr.bool(default = True, doc = "Verbose output"),
         "src": attr.label(mandatory = True, allow_single_file = True, doc = "ELF binary to convert"),
         "disable": attr.bool(default = False, doc = "Mark the application as disabled"),

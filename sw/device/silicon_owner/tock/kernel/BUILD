@@ -38,7 +38,7 @@ rust_binary(
         "src/otbn.rs",
         "src/pinmux_layout.rs",
     ],
-    crate_features = ["fpga"],
+    crate_features = ["fpga", "debug_load_processes"],
     rustc_flags = [
         "-g",
         # TODO(opentitan#19491): determine the appropriate set of linker flags.

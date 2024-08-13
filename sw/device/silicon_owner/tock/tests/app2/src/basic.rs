@@ -13,28 +13,24 @@ use libtock::alarm::{Alarm, Milliseconds};
 set_main!(main);
 stack_size!(0x400);
 
-struct Service;
-impl IpcCallback for Service {
-    fn call(&mut self, svc: u32, buf: &'static mut [u8]) {
-        write!(Console::writer(), "hello_cb: {svc:x} {buf:x?}\r\n").unwrap();
-    }
-}
+static mut fred: [u8; 4] = *b"fred";
 
 fn main() {
-
     if Ipc::exists() {
         write!(Console::writer(), "IPC exists!\r\n").unwrap();
         let x = Ipc::discover("hello").unwrap();
-        Ipc::register(x, &Service).unwrap();
+        unsafe {
+            Ipc::share(x, &mut fred).unwrap();
+        }
+        Ipc::notify_service(x);
     } else {
         write!(Console::writer(), "no IPC...\r\n").unwrap();
     }
-
     loop {
-        write!(Console::writer(), "Hello world!\r\n").unwrap();
-        Alarm::sleep_for(Milliseconds(1000)).unwrap();
+        Alarm::sleep_for(Milliseconds(500)).unwrap();
+        write!(Console::writer(), "Goodbye world!!\r\n").unwrap();
     }
     // opentitan_functest's default test harness looks for `PASS` or `FAIL` in
     // the test output to determine the test result.
-    write!(Console::writer(), "PASS!\r\n").unwrap();
+    //write!(Console::writer(), "PASS!\r\n").unwrap();
 }

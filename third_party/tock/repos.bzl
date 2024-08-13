@@ -148,6 +148,7 @@ def tock_repos(tock = None, libtock = None, elf2tab = None):
             ),
             "kernel/BUILD": crate_build(
                 name = "kernel",
+                crate_features = ["debug_load_processes"],
                 deps = [
                     "//libraries/tock-register-interface:tock-registers",
                     "//libraries/tock-cells",
@@ -171,6 +172,7 @@ def tock_repos(tock = None, libtock = None, elf2tab = None):
                     "//apis/interface/buzzer",
                     "//apis/interface/console",
                     "//apis/interface/leds",
+                    "//apis/kernel/ipc",
                     "//apis/kernel/low_level_debug",
                     "//apis/peripherals/adc",
                     "//apis/peripherals/alarm",
@@ -212,11 +214,17 @@ def tock_repos(tock = None, libtock = None, elf2tab = None):
                 crate_name = "libtock_{name}",
                 deps = ["//platform"],
             ),
+            "apis/kernel/ipc/BUILD": crate_build(
+                name = "ipc",
+                crate_name = "libtock_{name}",
+                deps = ["//platform"],
+            ),
             "apis/kernel/low_level_debug/BUILD": crate_build(
                 name = "low_level_debug",
                 crate_name = "libtock_{name}",
                 deps = ["//platform"],
             ),
+
             "apis/peripherals/adc/BUILD": crate_build(
                 name = "adc",
                 crate_name = "libtock_{name}",
@@ -331,10 +339,10 @@ def tock_repos(tock = None, libtock = None, elf2tab = None):
     http_archive_or_local(
         name = "elf2tab",
         local = elf2tab,
-        url = "https://github.com/tock/elf2tab/archive/2f0e2f0ef01e37799850d1b12f48b93a0b32a203.tar.gz",
-        sha256 = "b8b2ec7d8b9d052667d34190f98a0f5e69a0ba93ce69f00f2fdda7b5e241b963",
-        strip_prefix = "elf2tab-2f0e2f0ef01e37799850d1b12f48b93a0b32a203",
-        build_file = Label("//third_party/tock:BUILD.elf2tab.bazel"),
+        url = "https://github.com/tock/elf2tab/archive/9285639a4a1a43883b7771b5774206447fbb76c1.tar.gz",
+        sha256 = "3e30d55c4cff47601a86ff15b34c090b25c4be7e47f465223018ca95cc0d9ff5",
+        strip_prefix = "elf2tab-9285639a4a1a43883b7771b5774206447fbb76c1",
+        build_file = "//third_party/tock:BUILD.elf2tab.bazel",
     )
 
     pip_install(

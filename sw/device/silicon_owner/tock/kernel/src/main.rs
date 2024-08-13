@@ -172,6 +172,7 @@ struct EarlGrey {
         VirtualMuxAlarm<'static, earlgrey::timer::RvTimer<'static, ChipConfig>>,
     >,
     watchdog: &'static lowrisc::aon_timer::AonTimer,
+    ipc: kernel::ipc::IPC<{ NUM_PROCS as u8 }>,
 }
 
 /// Mapping of integer syscalls to objects that implement syscalls.
@@ -191,6 +192,7 @@ impl SyscallDriverLookup for EarlGrey {
             capsules_core::spi_controller::DRIVER_NUM => f(Some(self.spi_controller)),
             capsules_core::rng::DRIVER_NUM => f(Some(self.rng)),
             capsules_extra::symmetric_encryption::aes::DRIVER_NUM => f(Some(self.aes)),
+            kernel::ipc::DRIVER_NUM => f(Some(&self.ipc)),
             _ => f(None),
         }
     }
@@ -636,6 +638,12 @@ unsafe fn setup() -> (
             scheduler,
             scheduler_timer,
             watchdog,
+            ipc: kernel::ipc::IPC::new(
+                board_kernel,
+                kernel::ipc::DRIVER_NUM,
+                &memory_allocation_cap,
+            ),
+
         }
     );
 
@@ -678,7 +686,8 @@ pub unsafe extern "C" fn main() {
 
         let main_loop_cap = create_capability!(capabilities::MainLoopCapability);
 
-        board_kernel.kernel_loop(earlgrey, chip, None::<&kernel::ipc::IPC<0>>, &main_loop_cap);
+        //board_kernel.kernel_loop(earlgrey, chip, None::<&kernel::ipc::IPC<0>>, &main_loop_cap);
+        board_kernel.kernel_loop(earlgrey, chip, Some(&earlgrey.ipc), &main_loop_cap);
     }
 }
 

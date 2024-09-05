@@ -557,3 +557,16 @@ cc_library(
         "//sw/device/silicon_creator/lib/drivers:otp",
     ],
 )
+
+cc_library(
+    name = "timer",
+    srcs = ["timer.c"],
+    hdrs = ["timer.h"],
+    deps = [
+        "//hw/ip/rv_timer/data:rv_timer_regs",
+        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//sw/device/lib/arch:device",
+        "//sw/device/lib/base:abs_mmio",
+        "//sw/device/lib/base:bitfield",
+    ],
+)

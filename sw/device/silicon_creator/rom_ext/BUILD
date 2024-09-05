@@ -278,6 +278,7 @@ cc_library(
         "//sw/device/silicon_creator/lib/drivers:rnd",
         "//sw/device/silicon_creator/lib/drivers:rstmgr",
         "//sw/device/silicon_creator/lib/drivers:uart",
+        "//sw/device/silicon_creator/lib:timer",
         "//sw/device/silicon_creator/lib/ownership",
         "//sw/device/silicon_creator/lib/ownership:ownership_unlock",
         "//sw/device/silicon_creator/lib/sigverify",
@@ -306,7 +307,7 @@ opentitan_binary(
     manifest = ":manifest",
     rsa_key = select({
         "//signing:test_keys": {"//sw/device/silicon_creator/rom/keys/fake/rsa:prod_private_key_0": "prod_key_0"},
-        "//conditions:default": {"//sw/device/silicon_creator/rom/keys/real/rsa:keyset": "earlgrey_a0_test_0"},
+        "//conditions:default": {"//sw/device/silicon_creator/rom/keys/real/rsa:keyset": "earlgrey_a0_dev_0"},
     }),
     secver_write = secver_write_selection(),
     deps = [

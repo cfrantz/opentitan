@@ -51,10 +51,20 @@
 #include "sw/device/silicon_creator/rom_ext/rom_ext_boot_policy_ptrs.h"
 #include "sw/device/silicon_creator/rom_ext/rom_ext_epmp.h"
 #include "sw/device/silicon_creator/rom_ext/sigverify_keys.h"
+#include "sw/device/silicon_creator/lib/timer.h"
 
 #include "hw/top_earlgrey/sw/autogen/top_earlgrey.h"  // Generated.
 #include "otp_ctrl_regs.h"
 #include "sram_ctrl_regs.h"
+
+#define TIME() \
+  dbg_printf("rx:%u = %u\r\n", __LINE__, timer_get())
+
+#define DELTA() \
+    do { \
+      dbg_printf("dt:%u = %u\r\n", __LINE__, timer_get()-t0);\
+      t0 = timer_get();\
+    } while(0)
 
 static_assert(kCertX509Asn1SerialNumberSizeInBytes <= kHmacDigestNumBytes,
               "The ASN.1 encoded X.509 serial number field should be <= the "
@@ -242,11 +252,13 @@ void rom_ext_sram_exec(hardened_bool_t enable) {
 OT_WARN_UNUSED_RESULT
 static rom_error_t rom_ext_verify(const manifest_t *manifest,
                                   const boot_data_t *boot_data) {
+  uint32_t t0 = timer_get();
   RETURN_IF_ERROR(rom_ext_boot_policy_manifest_check(manifest, boot_data));
   const sigverify_rsa_key_t *key;
   RETURN_IF_ERROR(sigverify_rsa_key_get(
       sigverify_rsa_key_id_get(&manifest->rsa_modulus), &key));
 
+  DELTA();
   hmac_sha256_init();
   // Hash usage constraints.
   manifest_usage_constraints_t usage_constraints_from_hw;
@@ -260,10 +272,13 @@ static rom_error_t rom_ext_verify(const manifest_t *manifest,
   // Verify signature
   hmac_digest_t act_digest;
   hmac_sha256_final(&act_digest);
+  DELTA(); // (EStm: 1221us (SHA256 hash aes_smoketest))
 
   uint32_t flash_exec = 0;
-  return sigverify_rsa_verify_ibex(&manifest->rsa_signature, key, &act_digest,
-                                   lc_state, &flash_exec);
+  rom_error_t err =  sigverify_rsa_verify_ibex(&manifest->rsa_signature, key, &act_digest,
+                                   lc_state, &flash_exec); // (EStm: 80439us)
+  DELTA();
+  return err;
 }
 
 /**
@@ -290,41 +305,54 @@ static uintptr_t owner_vma_get(const manifest_t *manifest, uintptr_t lma_addr) {
 OT_WARN_UNUSED_RESULT
 static rom_error_t rom_ext_attestation_keygen(
     const manifest_t *owner_manifest) {
+  uint32_t t0 = timer_get();
   hardened_bool_t curr_cert_valid = kHardenedBoolFalse;
 
-  // Configure certificate flash info pages.
+  // Configure certificate flash info pages (EStm: 402us).
   flash_ctrl_cert_info_pages_creator_cfg();
 
   // Initialize the entropy complex and KMAC for key manager operations.
   // Note: `OTCRYPTO_OK.value` is equal to `kErrorOk` but we cannot add a static
   // assertion here since its definition is not an integer constant expression.
+  // (EStm: 19us)
+  DELTA();
   HARDENED_RETURN_IF_ERROR((rom_error_t)entropy_complex_init().value);
   HARDENED_RETURN_IF_ERROR(kmac_keymgr_configure());
+  DELTA();
 
   // Set keymgr reseed interval. Start with the maximum value to avoid
-  // entropy complex contention during the boot process.
+  // entropy complex contention during the boot process (EStm: 23us).
   const uint16_t kKeymgrEntropyReseedInterval = UINT16_MAX;
   keymgr_entropy_reseed_interval_set(kKeymgrEntropyReseedInterval);
   SEC_MMIO_WRITE_INCREMENT(kKeymgrSecMmioEntropyReseedIntervalSet);
+  DELTA();
 
   // ROM sets the SW binding values for the first key stage (CreatorRootKey) but
   // does not initialize the key manager. Advance key manager state twice to
-  // transition to the creator root key state.
+  // transition to the creator root key state (EStm: 18us).
   HARDENED_RETURN_IF_ERROR(keymgr_state_check(kKeymgrStateReset));
-  keymgr_advance_state();
-  HARDENED_RETURN_IF_ERROR(keymgr_state_check(kKeymgrStateInit));
+  DELTA();
+  keymgr_advance_state(); // (EStm: 0us)
+  DELTA();
+  HARDENED_RETURN_IF_ERROR(keymgr_state_check(kKeymgrStateInit)); // (EStm: 3293us)
+  DELTA();
 
   // Generate UDS keys.
-  keymgr_advance_state();
+  keymgr_advance_state(); // (EStm: 0us)
+  DELTA();
+  // (EStm: 6768us)
   HARDENED_RETURN_IF_ERROR(dice_attestation_keygen(kDiceKeyUds, &uds_pubkey_id,
                                                    &curr_attestation_pubkey));
+  DELTA();
   HARDENED_RETURN_IF_ERROR(otbn_boot_attestation_key_save(
       kUdsAttestationKeySeed, kOtbnBootAttestationKeyTypeDice,
-      kUdsKeymgrDiversifier));
+      kUdsKeymgrDiversifier)); // (EStm: 58us)
+  DELTA();
   curr_cert_valid = kHardenedBoolFalse;
   HARDENED_RETURN_IF_ERROR(cert_x509_asn1_check_serial_number(
       &kFlashCtrlInfoPageUdsCertificate, (uint8_t *)uds_pubkey_id.digest,
-      &curr_cert_valid));
+      &curr_cert_valid)); // (EStm: 13us)
+  DELTA();
   if (launder32(curr_cert_valid) == kHardenedBoolFalse) {
     // The UDS key ID (and cert itself) should never change unless:
     // 1. there is a hardware issue, or
@@ -338,6 +366,7 @@ static rom_error_t rom_ext_attestation_keygen(
     dbg_printf("Warning: UDS certificate not valid.\r\n");
   }
 
+  DELTA();
   // Generate CDI_0 attestation keys and (potentially) update certificate.
   keymgr_binding_value_t zero_binding_value = {.data = {0}};
   const manifest_t *rom_ext_manifest =
@@ -347,26 +376,33 @@ static rom_error_t rom_ext_attestation_keygen(
   HARDENED_RETURN_IF_ERROR(
       keymgr_owner_int_advance(/*sealing_binding=*/&zero_binding_value,
                                /*attest_binding=*/&boot_measurements.rom_ext,
-                               rom_ext_manifest->max_key_version));
+                               rom_ext_manifest->max_key_version)); // (EStm: 383 us)
+  DELTA();
   HARDENED_RETURN_IF_ERROR(dice_attestation_keygen(
-      kDiceKeyCdi0, &cdi_0_pubkey_id, &curr_attestation_pubkey));
+      kDiceKeyCdi0, &cdi_0_pubkey_id, &curr_attestation_pubkey)); // (EStm: 6762us)
+  DELTA();
   curr_cert_valid = kHardenedBoolFalse;
   HARDENED_RETURN_IF_ERROR(cert_x509_asn1_check_serial_number(
       &kFlashCtrlInfoPageCdi0Certificate, (uint8_t *)cdi_0_pubkey_id.digest,
-      &curr_cert_valid));
+      &curr_cert_valid)); // (EStm: 10us)
+  DELTA();
   if (launder32(curr_cert_valid) == kHardenedBoolFalse) {
     HARDENED_CHECK_EQ(curr_cert_valid, kHardenedBoolFalse);
     dbg_printf("CDI_0 certificate not valid. Updating it ...\r\n");
     size_t cdi_0_cert_size = kCdi0MaxCertSizeBytes;
+    DELTA();
     HARDENED_RETURN_IF_ERROR(dice_cdi_0_cert_build(
         (hmac_digest_t *)boot_measurements.rom_ext.data,
         rom_ext_manifest->security_version, &cdi_0_key_ids,
-        &curr_attestation_pubkey, cdi_0_cert, &cdi_0_cert_size));
+        &curr_attestation_pubkey, cdi_0_cert, &cdi_0_cert_size)); // (EStm: 7782us)
+    DELTA();
     HARDENED_RETURN_IF_ERROR(flash_ctrl_info_erase(
-        &kFlashCtrlInfoPageCdi0Certificate, kFlashCtrlEraseTypePage));
+        &kFlashCtrlInfoPageCdi0Certificate, kFlashCtrlEraseTypePage)); // (EStm: 1224us)
+    DELTA();
     HARDENED_RETURN_IF_ERROR(flash_ctrl_info_write(
         &kFlashCtrlInfoPageCdi0Certificate,
-        /*offset=*/0, cdi_0_cert_size / sizeof(uint32_t), cdi_0_cert));
+        /*offset=*/0, cdi_0_cert_size / sizeof(uint32_t), cdi_0_cert)); // (EStm: 2156us)
+    DELTA();
   }
 
   // Generate CDI_1 attestation keys and (potentially) update certificate.
@@ -377,18 +413,23 @@ static rom_error_t rom_ext_attestation_keygen(
   // TODO(#21583): setup attestation key binding value manually since
   // static_critical section on ES silicon does not contain the Owner firmware
   // measurement.
+  DELTA();
   HARDENED_RETURN_IF_ERROR(keymgr_owner_advance(
       /*sealing_binding=*/&zero_binding_value,
-      /*attest_binding=*/&zero_binding_value, owner_manifest->max_key_version));
+      /*attest_binding=*/&zero_binding_value, owner_manifest->max_key_version)); // (EStm: 382us)
+  DELTA();
   HARDENED_RETURN_IF_ERROR(dice_attestation_keygen(
-      kDiceKeyCdi1, &cdi_1_pubkey_id, &curr_attestation_pubkey));
+      kDiceKeyCdi1, &cdi_1_pubkey_id, &curr_attestation_pubkey)); // (EStm: 6759us)
   curr_cert_valid = kHardenedBoolFalse;
+  DELTA();
   HARDENED_RETURN_IF_ERROR(cert_x509_asn1_check_serial_number(
       &kFlashCtrlInfoPageCdi1Certificate, (uint8_t *)cdi_1_pubkey_id.digest,
-      &curr_cert_valid));
+      &curr_cert_valid)); // (EStm: 10us)
+  DELTA();
   if (launder32(curr_cert_valid) == kHardenedBoolFalse) {
     HARDENED_CHECK_EQ(curr_cert_valid, kHardenedBoolFalse);
     dbg_printf("CDI_1 certificate not valid. Updating it ...\r\n");
+    DELTA();
     size_t cdi_1_cert_size = kCdi1MaxCertSizeBytes;
     // TODO(#21583): add owner firmware measurement to CDI_1 cert.
     // TODO(#19596): add owner configuration block measurement to CDI_1 cert.
@@ -396,20 +437,26 @@ static rom_error_t rom_ext_attestation_keygen(
         (hmac_digest_t *)zero_binding_value.data,
         (hmac_digest_t *)zero_binding_value.data,
         owner_manifest->security_version, &cdi_1_key_ids,
-        &curr_attestation_pubkey, cdi_1_cert, &cdi_1_cert_size));
+        &curr_attestation_pubkey, cdi_1_cert, &cdi_1_cert_size)); // (EStm: 7845us)
+    DELTA();
     HARDENED_RETURN_IF_ERROR(flash_ctrl_info_erase(
-        &kFlashCtrlInfoPageCdi1Certificate, kFlashCtrlEraseTypePage));
+        &kFlashCtrlInfoPageCdi1Certificate, kFlashCtrlEraseTypePage)); // (EStm: 1225us)
+    DELTA();
     HARDENED_RETURN_IF_ERROR(flash_ctrl_info_write(
         &kFlashCtrlInfoPageCdi1Certificate,
-        /*offset=*/0, cdi_1_cert_size / sizeof(uint32_t), cdi_1_cert));
+        /*offset=*/0, cdi_1_cert_size / sizeof(uint32_t), cdi_1_cert)); // (EStm: 2322us)
+    DELTA();
   }
 
   // Remove write and erase access to the certificate pages before handing over
   // execution to the owner firmware (owner firmware can still read).
-  flash_ctrl_cert_info_pages_owner_restrict();
+  DELTA();
+  flash_ctrl_cert_info_pages_owner_restrict(); // (EStm: 202us)
+  DELTA();
 
   // TODO: elimiate this call when we've fully programmed keymgr and lock it.
-  keymgr_sw_binding_unlock_wait();
+  keymgr_sw_binding_unlock_wait(); // (EStm: 19us)
+  DELTA();
 
   return kErrorOk;
 }
@@ -417,12 +464,16 @@ static rom_error_t rom_ext_attestation_keygen(
 OT_WARN_UNUSED_RESULT
 static rom_error_t rom_ext_boot(const manifest_t *manifest) {
   // Crank the keymgr and validate attestation certificates.
+  uint32_t t0 = timer_get();
   HARDENED_RETURN_IF_ERROR(rom_ext_attestation_keygen(manifest));
+  DELTA();
 
   // Disable access to silicon creator info pages, the OTP creator partition
   // and the OTP direct access interface until the next reset.
-  flash_ctrl_creator_info_pages_lockdown();
-  otp_creator_sw_cfg_lockdown();
+  flash_ctrl_creator_info_pages_lockdown(); // (EStm: 323us)
+  DELTA();
+  otp_creator_sw_cfg_lockdown(); // (EStm: 23us)
+  DELTA();
   SEC_MMIO_WRITE_INCREMENT(kFlashCtrlSecMmioCreatorInfoPagesLockdown +
                            kOtpSecMmioCreatorSwCfgLockDown);
 
@@ -555,14 +606,19 @@ static rom_error_t rom_ext_boot(const manifest_t *manifest) {
   ibex_addr_remap_lockdown(0);
   ibex_addr_remap_lockdown(1);
 
-  dbg_print_epmp();
+  // (EStm: 165us for all ePMP arrangements and lockdowns)
+  DELTA();
+  dbg_print_epmp(); // (EStm: 52259us)
+  DELTA();
 
   // Verify expectations before jumping to owner code.
   // TODO: we really want to call rnd_uint32 here to select a random starting
   // location for checking expectations.  However, rnd_uint32 read from OTP
   // to know if it's allowed to used the CSRNG and OTP is locked down.
+  // (EStm: 48us)
   sec_mmio_check_values_except_otp(/*rnd_uint32()*/ 0,
                                    TOP_EARLGREY_OTP_CTRL_CORE_BASE_ADDR);
+  DELTA();
   // Jump to OWNER entry point.
   dbg_printf("entry: 0x%x\r\n", (unsigned int)entry_point);
   ((owner_stage_entry_point *)entry_point)();
@@ -711,6 +767,7 @@ static rom_error_t handle_boot_svc(boot_data_t *boot_data) {
 
 OT_WARN_UNUSED_RESULT
 static rom_error_t rom_ext_try_next_stage(boot_data_t *boot_data) {
+  uint32_t t0 = timer_get();
   rom_ext_boot_policy_manifests_t manifests =
       rom_ext_boot_policy_manifests_get(boot_data);
   rom_error_t error = kErrorRomExtBootFailed;
@@ -730,14 +787,16 @@ static rom_error_t rom_ext_try_next_stage(boot_data_t *boot_data) {
     } else {
       return kErrorRomExtBootFailed;
     }
+  DELTA();
     boot_log_digest_update(boot_log);
+  DELTA();
 
     // Boot fails if a verified ROM_EXT cannot be booted.
     RETURN_IF_ERROR(rom_ext_boot(manifests.ordered[i]));
     // `rom_ext_boot()` should never return `kErrorOk`, but if it does
     // we must shut down the chip instead of trying the next ROM_EXT.
     return kErrorRomExtBootFailed;
-  }
+  } // (EStm: 85480us (aes_smoketest in SlotA))
 
   // If we get here, the loop exited after trying both slots.
   // If we see kErrorBootPolicyBadIdentifier as the error, we probably have an
@@ -752,10 +811,13 @@ static rom_error_t rom_ext_try_next_stage(boot_data_t *boot_data) {
 }
 
 static rom_error_t rom_ext_start(boot_data_t *boot_data, boot_log_t *boot_log) {
+  uint32_t t0 = timer_get();
   HARDENED_RETURN_IF_ERROR(rom_ext_init(boot_data));
   const manifest_t *self = rom_ext_manifest();
   dbg_printf("Starting ROM_EXT %u.%u\r\n", self->version_major,
              self->version_minor);
+  DELTA();
+  TIME();
 
   const manifest_ext_secver_write_t *secver;
   rom_error_t error;
@@ -798,10 +860,13 @@ static rom_error_t rom_ext_start(boot_data_t *boot_data, boot_log_t *boot_log) {
 
   // Load OTBN attestation keygen program.
   // TODO(#21550): this should already be loaded by the ROM.
-  HARDENED_RETURN_IF_ERROR(otbn_boot_app_load());
+  DELTA();
+  HARDENED_RETURN_IF_ERROR(otbn_boot_app_load()); // (EStm: 358us)
+  DELTA();
 
   // Initialize the chip ownership state.
-  HARDENED_RETURN_IF_ERROR(ownership_init());
+  HARDENED_RETURN_IF_ERROR(ownership_init()); // (EStm: 555us)
+  DELTA();
 
   // Handle any pending boot_svc commands.
   uint32_t skip_boot_svc = reset_reasons & (1 << kRstmgrReasonLowPowerExit);
@@ -819,7 +884,8 @@ static rom_error_t rom_ext_start(boot_data_t *boot_data, boot_log_t *boot_log) {
   // Re-sync the boot_log entries that could be changed by boot services.
   boot_log->rom_ext_nonce = boot_data->nonce;
   boot_log->ownership_state = boot_data->ownership_state;
-  boot_log_digest_update(boot_log);
+  boot_log_digest_update(boot_log); // (EStm: 11us)
+  DELTA();
 
   if (uart_break_detect(kRescueDetectTime) == kHardenedBoolTrue) {
     dbg_printf("rescue: remember to clear break\r\n");
@@ -832,6 +898,7 @@ static rom_error_t rom_ext_start(boot_data_t *boot_data, boot_log_t *boot_log) {
 }
 
 void rom_ext_main(void) {
+  timer_init();
   rom_ext_check_rom_expectations();
   boot_data_t boot_data;
   boot_log_t *boot_log = &retention_sram_get()->creator.boot_log;

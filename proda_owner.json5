@@ -1,0 +1,68 @@
+{
+  struct_version: 0,
+  sram_exec: "DisabledLocked",
+  ownership_key_alg: "EcdsaP256",
+  config_version: 0,
+  min_security_version_bl0: "NoChange",
+  owner_key: {
+    Ecdsa: "sw/device/silicon_creator/rom_ext/proda/keys/ownership_owner_key.der"
+    // Opentitantool will load this DER file and transform the key into the
+    // little-endian representation of the x/y cooridiantes.
+    //
+    // Ecdsa: {
+    //   x: "cd061e79ebaadd3e9ae7daa29139378f444f7aca3b0bbfa2391438030a13e557",
+    //   y: "ce2b96255f419243b78fa5540dec42a5961034ce74604eb36c7913c283f3ceb8"
+    // }
+  },
+  activate_key: {
+    Ecdsa: "sw/device/silicon_creator/rom_ext/proda/keys/ownership_activate_key.der"
+  },
+  unlock_key: {
+    Ecdsa: "sw/device/silicon_creator/rom_ext/proda/keys/ownership_unlock_key.der"
+  },
+  data: [
+    {
+      ApplicationKey: {
+        header: {
+          identifier: "ApplicationKey",
+          length: 0
+        },
+        key_alg: "EcdsaP256",
+        key_domain: "Prod",
+        usage_constraint: 0,
+        key: {
+          Ecdsa: "sw/device/silicon_creator/rom_ext/proda/keys/appkey_prod_0.der"
+        }
+      }
+    },
+    {
+      ApplicationKey: {
+        header: {
+          identifier: "ApplicationKey",
+          length: 0
+        },
+        key_alg: "EcdsaP256",
+        key_domain: "Dev",
+        usage_constraint: 0,
+        key: {
+          Ecdsa: "sw/device/silicon_creator/rom_ext/proda/keys/appkey_dev_0.der"
+        }
+      }
+    },
+    {
+      ApplicationKey: {
+        header: {
+          identifier: "ApplicationKey",
+          length: 0
+        },
+        key_alg: "EcdsaP256",
+        key_domain: "Test",
+        usage_constraint: 0,
+        key: {
+          Ecdsa: "sw/device/silicon_creator/rom_ext/proda/keys/appkey_test_0.der"
+        }
+      }
+    },
+  ],
+  seal: "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+}

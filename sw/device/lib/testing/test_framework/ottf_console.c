@@ -112,6 +112,7 @@ void ottf_console_configure_uart(uintptr_t base_addr) {
   CHECK(kUartBaudrate <= UINT32_MAX, "kUartBaudrate must fit in uint32_t");
   CHECK(kClockFreqPeripheralHz <= UINT32_MAX,
         "kClockFreqPeripheralHz must fit in uint32_t");
+#if 0
   CHECK_DIF_OK(dif_uart_configure(
       &ottf_console_uart, (dif_uart_config_t){
                               .baudrate = (uint32_t)kUartBaudrate,
@@ -121,6 +122,7 @@ void ottf_console_configure_uart(uintptr_t base_addr) {
                               .tx_enable = kDifToggleEnabled,
                               .rx_enable = kDifToggleEnabled,
                           }));
+#endif
   base_uart_stdout(&ottf_console_uart);
 
   // Initialize/Configure console flow control (if requested).

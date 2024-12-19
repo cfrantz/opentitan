@@ -233,11 +233,11 @@ algorithms! {
     #[derive(EnumString, Display, Serialize, Deserialize)]
     #[strum(ascii_case_insensitive)]
     pub enum SphincsPlus {
-        #[serde(rename="SPHINCS+-SHAKE-128s-simple", alias="SHAKE-128s-simple")]
-        #[strum(serialize="SPHINCS+-SHAKE-128s-simple", serialize="SHAKE-128s-simple")]
+        #[serde(rename="SPHINCS+-SHAKE-128s-simple", alias="SHAKE-128s-simple", alias="SLH-DSA-SHAKE-128s")]
+        #[strum(serialize="SPHINCS+-SHAKE-128s-simple", serialize="SHAKE-128s-simple", serialize="SLH-DSA-SHAKE-128s")]
         Shake128sSimple => shake_128s_simple,
-        #[serde(rename="SPHINCS+-SHA2-128s-simple", alias="SHA2-128s-simple")]
-        #[strum(serialize="SPHINCS+-SHA2-128s-simple", serialize="SHA2-128s-simple")]
+        #[serde(rename="SPHINCS+-SHA2-128s-simple", alias="SHA2-128s-simple",alias="SLH-DSA-SHA2-128s")]
+        #[strum(serialize="SPHINCS+-SHA2-128s-simple", serialize="SHA2-128s-simple", serialize="SLH-DSA-SHA2-128s")]
         Sha2128sSimple => sha2_128s_simple,
     }
 }

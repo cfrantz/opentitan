@@ -89,6 +89,7 @@ CONST = struct(
         ),
         SIGVERIFY = struct(
             BAD_RSA_SIGNATURE = 0x01535603,
+            BAD_SPX_SIGNATURE = 0x02535603,
             BAD_RSA_KEY = 0x04535603,
             BAD_ECDSA_SIGNATURE = 0x07535603,
             BAD_ECDSA_KEY = 0x09535603,

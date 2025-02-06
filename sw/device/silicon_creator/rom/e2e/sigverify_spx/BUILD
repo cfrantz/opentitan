@@ -15,6 +15,7 @@ load(
     "//rules:const.bzl",
     "CONST",
     "get_lc_items",
+    "hex_digits",
 )
 load(
     "//rules:opentitan.bzl",
@@ -39,6 +40,11 @@ load(
 load(
     "@bazel_skylib//lib:dicts.bzl",
     "dicts",
+)
+load(
+    "//sw/device/silicon_creator/rom/e2e:defs.bzl",
+    "MSG_TEMPLATE_BFV",
+    "msg_template_bfv_all_except",
 )
 
 package(default_visibility = ["//visibility:public"])
@@ -233,27 +239,116 @@ test_suite(
     ],
 )
 
-opentitan_test(
-    name = "sigverify_spx_prehashed_test",
+opentitan_binary(
+    name = "spx_prehashed",
+    testonly = True,
     srcs = ["sigverify_spx_test.c"],
     ecdsa_key = {
         "//sw/device/silicon_creator/rom/keys/fake/ecdsa:prod_key_1_ecdsa_p256": "prod_key_1",
     },
-    exec_env = {
-        "//hw/top_earlgrey:fpga_cw310_rom_with_fake_keys": None,
-    },
-    fpga = fpga_params(
-        bitstream = ":bitstream_sigverify_spx_prod_enabled_true",
-    ),
+    exec_env = [
+        "//hw/top_earlgrey:fpga_cw310_rom_with_fake_keys",
+    ],
+    linker_script = "//sw/device/lib/testing/test_framework:ottf_ld_silicon_creator_slot_virtual",
     spx_key = {
         "//sw/device/silicon_creator/rom/keys/fake/spx:prod_key_1_spx_key": "prod_key_1",
     },
     deps = [
         "//hw/ip/otp_ctrl/data:otp_ctrl_c_regs",
-        "//sw/device/lib/testing/test_framework:ottf_ld_silicon_creator_slot_a",
         "//sw/device/lib/testing/test_framework:ottf_main",
         "//sw/device/silicon_creator/lib/drivers:lifecycle",
         "//sw/device/silicon_creator/lib/drivers:otp",
         "//sw/device/silicon_creator/lib/sigverify:spx_verify",
     ],
+)
+
+opentitan_test(
+    name = "sigverify_spx_prehashed_test",
+    exec_env = {
+        "//hw/top_earlgrey:fpga_cw310_rom_with_fake_keys": None,
+    },
+    fpga = fpga_params(
+        binaries = {
+            ":spx_prehashed": "firmware",
+        },
+        bitstream = ":bitstream_sigverify_spx_prod_enabled_true",
+    ),
+)
+
+filegroup(
+    name = "spx_prehashed_signed_bin",
+    testonly = True,
+    srcs = [":spx_prehashed"],
+    output_group = "fpga_cw310_rom_with_fake_keys_signed_bin",
+)
+
+genrule(
+    name = "spx_prehashed_ecdsa_corrupt",
+    testonly = True,
+    srcs = ["spx_prehashed_signed_bin"],
+    outs = ["spx_prehashed_ecdsa_corrupt.signed.bin"],
+    # Corrupt the ECDSA signature by overwriting the first 4 bytes with zeros.
+    cmd_bash = "cat $(SRCS) > $(OUTS) && dd if=/dev/zero of=$(OUTS) bs=4 seek=0 count=1 conv=notrunc status=none",
+)
+
+# When SPX is enabled, check that the boot fails when the ECDSA signature
+# is bad and the SPX signature is good.
+opentitan_test(
+    name = "ecdsa_bad_spx_good_test",
+    exec_env = {
+        "//hw/top_earlgrey:fpga_cw310_rom_with_fake_keys": None,
+    },
+    fpga = fpga_params(
+        binaries = {
+            ":spx_prehashed_ecdsa_corrupt": "firmware",
+        },
+        bitstream = ":bitstream_sigverify_spx_prod_enabled_true",
+        exit_failure = msg_template_bfv_all_except(CONST.BFV.SIGVERIFY.BAD_ECDSA_SIGNATURE),
+        exit_success = MSG_TEMPLATE_BFV.format(hex_digits(CONST.BFV.SIGVERIFY.BAD_ECDSA_SIGNATURE)),
+    ),
+)
+
+genrule(
+    name = "spx_prehashed_spx_corrupt",
+    testonly = True,
+    srcs = ["spx_prehashed_signed_bin"],
+    outs = ["spx_prehashed_spx_corrupt.signed.bin"],
+    # Corrupt the SPX signature by omitting the last 8 bytes of the file (the SPX signature
+    # is the last thing in the signed image).
+    cmd_bash = "head --bytes=-8 $(SRCS) > $(OUTS)",
+)
+
+# When SPX is enabled, check that the boot fails when the ECDSA signature
+# is good and the SPX signature is bad.
+opentitan_test(
+    name = "ecdsa_good_spx_bad_test",
+    exec_env = {
+        "//hw/top_earlgrey:fpga_cw310_rom_with_fake_keys": None,
+    },
+    fpga = fpga_params(
+        binaries = {
+            ":spx_prehashed_spx_corrupt": "firmware",
+        },
+        bitstream = ":bitstream_sigverify_spx_prod_enabled_true",
+        exit_failure = msg_template_bfv_all_except(CONST.BFV.SIGVERIFY.BAD_SPX_SIGNATURE),
+        exit_success = MSG_TEMPLATE_BFV.format(hex_digits(CONST.BFV.SIGVERIFY.BAD_SPX_SIGNATURE)),
+    ),
+)
+
+# Make sure we can boot side B when slot A is bad.  This test uses a bad SPX signature
+# in slot A to ensure that we don't leave OTBN in a bad state before attempting
+# verification in slot B.
+opentitan_test(
+    name = "slot_a_bad_slot_b_good",
+    exec_env = {
+        "//hw/top_earlgrey:fpga_cw310_rom_with_fake_keys": None,
+    },
+    fpga = fpga_params(
+        assemble = "{slot_a}@0x0 {slot_b}@0x80000",
+        binaries = {
+            ":spx_prehashed_spx_corrupt": "slot_a",
+            ":spx_prehashed": "slot_b",
+        },
+        bitstream = ":bitstream_sigverify_spx_prod_enabled_true",
+    ),
 )

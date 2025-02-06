@@ -401,25 +401,21 @@ static rom_error_t rom_verify(const manifest_t *manifest,
    * We swap the order of signature verifications randomly.
    */
   *flash_exec = 0;
-  if (rnd_uint32() < 0x80000000) {
-    HARDENED_RETURN_IF_ERROR(sigverify_ecdsa_p256_verify(
-        &manifest->ecdsa_signature, ecdsa_key, &rev_digest, flash_exec));
 
-    return sigverify_spx_verify(
-        spx_signature, spx_key, spx_config, lc_state,
-        &usage_constraints_from_hw, sizeof(usage_constraints_from_hw),
-        anti_rollback, anti_rollback_len, digest_region.start,
-        digest_region.length, &fwd_digest, flash_exec);
-  } else {
-    HARDENED_RETURN_IF_ERROR(sigverify_spx_verify(
-        spx_signature, spx_key, spx_config, lc_state,
-        &usage_constraints_from_hw, sizeof(usage_constraints_from_hw),
-        anti_rollback, anti_rollback_len, digest_region.start,
-        digest_region.length, &fwd_digest, flash_exec));
+  HARDENED_RETURN_IF_ERROR(sigverify_ecdsa_p256_start(
+      &manifest->ecdsa_signature, ecdsa_key, &rev_digest));
 
-    return sigverify_ecdsa_p256_verify(&manifest->ecdsa_signature, ecdsa_key,
-                                       &rev_digest, flash_exec);
-  }
+  rom_error_t spx = sigverify_spx_verify(
+      spx_signature, spx_key, spx_config, lc_state, &usage_constraints_from_hw,
+      sizeof(usage_constraints_from_hw), anti_rollback, anti_rollback_len,
+      digest_region.start, digest_region.length, &fwd_digest, flash_exec);
+
+  rom_error_t ecdsa =
+      sigverify_ecdsa_p256_finish(&manifest->ecdsa_signature, flash_exec);
+  HARDENED_RETURN_IF_ERROR(spx);
+  HARDENED_RETURN_IF_ERROR(ecdsa);
+  // Both should be kErrorOk.  Mix the results and normalize.
+  return (rom_error_t)((spx + ecdsa) >> 1);
 }
 
 /* These symbols are defined in

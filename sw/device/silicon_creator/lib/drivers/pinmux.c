@@ -59,6 +59,12 @@ static const pinmux_output_t kOutputUart0 = {
     .pad = kTopEarlgreyMuxedPadsIoc4,
 };
 
+static const pinmux_input_t kInputUsbdevSense = {
+    .periph = kTopEarlgreyPinmuxPeripheralInUsbdevSense,
+    .insel = kTopEarlgreyPinmuxInselIoc7,
+    .pad = kTopEarlgreyMuxedPadsIoc7,
+};
+
 /**
  * SW strap pins.
  */
@@ -199,6 +205,10 @@ void pinmux_init(void) {
   pinmux_enable_pull(kInputUart0.pad, /*enable=*/true, /*up=*/true);
   pinmux_configure_input(kInputUart0.periph, kInputUart0.insel);
   configure_output(kOutputUart0);
+}
+
+void pinmux_init_usb(void) {
+  pinmux_configure_input(kInputUsbdevSense.periph, kInputUsbdevSense.insel);
 }
 
 uint32_t pinmux_read_straps(void) {

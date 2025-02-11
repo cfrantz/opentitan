@@ -14,11 +14,13 @@ load(
 )
 load(
     "//rules/opentitan:defs.bzl",
+    "EARLGREY_SILICON_OWNER_ROM_EXT_ENVS",
     "EARLGREY_TEST_ENVS",
     "fpga_params",
     "opentitan_test",
     "qemu_params",
     "verilator_params",
+    "silicon_params",
 )
 
 package(default_visibility = ["//visibility:public"])
@@ -884,5 +886,75 @@ cc_test(
         "//hw/top_earlgrey/ip/sensor_ctrl/data:sensor_ctrl_c_regs",
         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
         "@googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "usb",
+    srcs = [
+        "stdusb.c",
+        "usb.c",
+    ],
+    hdrs = [
+        "stdusb.h",
+        "usb.h",
+    ],
+    deps = [
+        "//hw/ip/usbdev/data:usbdev_c_regs",
+        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//sw/device/lib/base:abs_mmio",
+        "//sw/device/lib/base:bitfield",
+        "//sw/device/lib/base:hardened",
+        "//sw/device/silicon_creator/lib:dbg_print",
+    ],
+)
+
+opentitan_test(
+    name = "usb_enumerate_functest",
+    srcs = ["usb_enumerate_functest.c"],
+    exec_env = dicts.add(
+        EARLGREY_TEST_ENVS,
+        EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+    ),
+    verilator = verilator_params(
+        timeout = "long",
+    ),
+    silicon = silicon_params(
+        test_harness = "//sw/host/tests/chip/usb:usb_harness",
+        test_cmd = """
+            --bootstrap={firmware}
+        """,
+    ),
+    deps = [
+        ":pinmux",
+        ":usb",
+        "//sw/device/lib/base:macros",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+    ],
+)
+
+opentitan_test(
+    name = "usb_functest",
+    srcs = ["usb_functest.c"],
+    exec_env = dicts.add(
+        EARLGREY_TEST_ENVS,
+        EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+    ),
+    verilator = verilator_params(
+        timeout = "long",
+    ),
+    silicon = silicon_params(
+        test_harness = "//sw/host/tests/chip/usb:silicon_creator_harness",
+        test_cmd = """
+            --bootstrap={firmware}
+        """,
+    ),
+    deps = [
+        ":pinmux",
+        ":usb",
+        ":rnd",
+        ":hmac",
+        "//sw/device/lib/base:macros",
+        "//sw/device/lib/testing/test_framework:ottf_main",
     ],
 )

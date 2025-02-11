@@ -42,6 +42,7 @@ void pinmux_init(void);
  */
 uint32_t pinmux_read_straps(void);
 
+void pinmux_init_usb(void);
 #ifdef __cplusplus
 }
 #endif

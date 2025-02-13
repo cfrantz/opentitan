@@ -252,8 +252,10 @@ impl CommandDispatch for SetNextBl0Slot {
         rescue.enter(transport, self.reset_target)?;
         rescue.set_next_bl0_slot(self.primary, self.next)?;
         if self.get_response {
+            log::info!("Getting response");
             rescue.enter(transport, false)?;
             let response = rescue.get_boot_svc()?;
+            log::info!("Rebooting");
             rescue.reboot()?;
             Ok(Some(Box::new(response)))
         } else {

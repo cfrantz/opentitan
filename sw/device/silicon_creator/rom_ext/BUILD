@@ -191,7 +191,7 @@ cc_test(
             "//sw/device/silicon_creator/lib/ownership",
             "//sw/device/silicon_creator/lib/ownership:ownership_activate",
             "//sw/device/silicon_creator/lib/ownership:ownership_unlock",
-            "//sw/device/silicon_creator/lib/rescue",
+            "//sw/device/silicon_creator/lib/rescue:rescue_xmodem",
             "//sw/device/silicon_creator/lib/sigverify",
             "//sw/device/silicon_creator/manuf/base:perso_tlv_data",
             "//sw/otbn/crypto:boot",

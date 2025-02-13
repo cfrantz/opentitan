@@ -638,7 +638,7 @@ extern "C++" {
 /**
  *  This macro is used to align an offset to point to a 32b value.
  */
-#define OT_ALIGN_MEM(x) (uint32_t)(4 + (((uintptr_t)(x)-1) & ~3u))
+#define OT_ALIGN_MEM(x) (uint32_t)(4 + (((uintptr_t)(x) - 1) & ~3u))
 
 #if !defined(__ASSEMBLER__) && !defined(NOSTDINC) && \
     !defined(RUST_PREPROCESSOR_EMIT)
@@ -718,5 +718,36 @@ class SignConverter {
 // The ISR context size is 30 words.  There are 32 cpu registers; 30 of them
 // need to be saved.  The two that do not are `sp` and `gp` (x2 and x3).
 #define OT_CONTEXT_SIZE (OT_WORD_SIZE * 30)
+
+/**
+ * A macro that returns the minimum of two values.
+ *
+ * @param a First value.
+ * @param b Second value.
+ */
+#ifndef MIN
+#define MIN(a, b)       \
+  ({                    \
+    typeof(a) _a = (a); \
+    typeof(b) _b = (b); \
+    _a < _b ? _a : _b;  \
+  })
+#endif
+
+/**
+ * A macro that returns the maximum of two values.
+ *
+ * @param a First value.
+ * @param b Second value.
+ *
+ */
+#ifndef MAX
+#define MAX(a, b)       \
+  ({                    \
+    typeof(a) _a = (a); \
+    typeof(b) _b = (b); \
+    _a > _b ? _a : _b;  \
+  })
+#endif
 
 #endif  // OPENTITAN_SW_DEVICE_LIB_BASE_MACROS_H_

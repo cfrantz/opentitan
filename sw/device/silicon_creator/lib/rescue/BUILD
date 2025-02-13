@@ -26,6 +26,19 @@ cc_library(
 )
 
 cc_library(
+    name = "rescue_xmodem",
+    srcs = ["rescue_xmodem.c"],
+    deps = [
+        ":rescue",
+        "//sw/device/lib/base:memory",
+        "//sw/device/silicon_creator/lib:boot_data",
+        "//sw/device/silicon_creator/lib:dbg_print",
+        "//sw/device/silicon_creator/lib:error",
+        "//sw/device/silicon_creator/lib/drivers:rstmgr",
+    ],
+)
+
+cc_library(
     name = "xmodem",
     srcs = ["xmodem.c"],
     hdrs = ["xmodem.h"],

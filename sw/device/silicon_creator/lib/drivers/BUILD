@@ -19,8 +19,8 @@ load(
     "fpga_params",
     "opentitan_test",
     "qemu_params",
-    "verilator_params",
     "silicon_params",
+    "verilator_params",
 )
 
 package(default_visibility = ["//visibility:public"])
@@ -916,14 +916,14 @@ opentitan_test(
         EARLGREY_TEST_ENVS,
         EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
     ),
-    verilator = verilator_params(
-        timeout = "long",
-    ),
     silicon = silicon_params(
-        test_harness = "//sw/host/tests/chip/usb:usb_harness",
         test_cmd = """
             --bootstrap={firmware}
         """,
+        test_harness = "//sw/host/tests/chip/usb:usb_harness",
+    ),
+    verilator = verilator_params(
+        timeout = "long",
     ),
     deps = [
         ":pinmux",
@@ -940,20 +940,20 @@ opentitan_test(
         EARLGREY_TEST_ENVS,
         EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
     ),
-    verilator = verilator_params(
-        timeout = "long",
-    ),
     silicon = silicon_params(
-        test_harness = "//sw/host/tests/chip/usb:silicon_creator_harness",
         test_cmd = """
             --bootstrap={firmware}
         """,
+        test_harness = "//sw/host/tests/chip/usb:silicon_creator_harness",
+    ),
+    verilator = verilator_params(
+        timeout = "long",
     ),
     deps = [
-        ":pinmux",
-        ":usb",
-        ":rnd",
         ":hmac",
+        ":pinmux",
+        ":rnd",
+        ":usb",
         "//sw/device/lib/base:macros",
         "//sw/device/lib/testing/test_framework:ottf_main",
     ],

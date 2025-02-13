@@ -4,7 +4,7 @@
 
 #ifndef OPENTITAN_SW_DEVICE_SILICON_CREATOR_LIB_XMODEM_TESTLIB_H_
 #define OPENTITAN_SW_DEVICE_SILICON_CREATOR_LIB_XMODEM_TESTLIB_H_
-#include "sw/device/silicon_creator/lib/xmodem.h"
+#include "sw/device/silicon_creator/lib/rescue/xmodem.h"
 
 /**
  * Read data from the input within the specified timeout.

@@ -72,6 +72,12 @@ typedef struct RescueState {
   uint32_t frame;
   // Current data offset.
   uint32_t offset;
+  // Amount of data staged in the `data` buffer (for data to send to the host).
+  uint16_t staged_len;
+  // DFU state (for rescue implementations using DFU).
+  uint8_t dfu_state;
+  // DFU error (for rescue implementations using DFU).
+  uint8_t dfu_error;
   // Current flash write offset.
   uint32_t flash_offset;
   // Range to erase and write for firmware rescue (inclusive).

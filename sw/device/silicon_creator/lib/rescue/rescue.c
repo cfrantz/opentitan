@@ -177,16 +177,16 @@ rom_error_t rescue_send_handler(rescue_state_t *state, boot_data_t *bootdata) {
   switch (state->mode) {
     case kRescueModeBootLog:
       memcpy(state->data, &rr->creator.boot_log, sizeof(rr->creator.boot_log));
-      state->offset = sizeof(rr->creator.boot_log);
+      state->staged_len = sizeof(rr->creator.boot_log);
       break;
     case kRescueModeBootSvcRsp:
       memcpy(state->data, &rr->creator.boot_svc_msg,
              sizeof(rr->creator.boot_svc_msg));
-      state->offset = sizeof(rr->creator.boot_svc_msg);
+      state->staged_len = sizeof(rr->creator.boot_svc_msg);
       break;
     case kRescueModeOpenTitanID: {
       lifecycle_device_id_get((lifecycle_device_id_t *)state->data);
-      state->offset = sizeof(lifecycle_device_id_t);
+      state->staged_len = sizeof(lifecycle_device_id_t);
       break;
     }
     case kRescueModeOwnerPage0:

@@ -64,9 +64,9 @@ static rom_error_t validate_mode(uint32_t mode, rescue_state_t *state,
 static rom_error_t handle_send_modes(rescue_state_t *state,
                                      boot_data_t *bootdata) {
   rom_error_t error = rescue_send_handler(state, bootdata);
-  if (error == kErrorRescueSendStart && state->offset > 0) {
-    error = xmodem_send(iohandle, state->data, state->offset);
-    state->offset = 0;
+  if (error == kErrorRescueSendStart && state->staged_len > 0) {
+    error = xmodem_send(iohandle, state->data, state->staged_len);
+    state->staged_len = 0;
     validate_mode(kRescueModeFirmware, state, bootdata);
   }
   return error;

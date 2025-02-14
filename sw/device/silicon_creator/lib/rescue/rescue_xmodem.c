@@ -156,12 +156,3 @@ rom_error_t rescue_protocol(boot_data_t *bootdata,
   }
   return result;
 }
-
-hardened_bool_t rescue_detect_entry(const owner_rescue_config_t *config) {
-  if (uart_break_detect(kRescueDetectTime) == kHardenedBoolTrue) {
-    dbg_printf("rescue: remember to clear break\r\n");
-    uart_enable_receiver();
-    return kHardenedBoolTrue;
-  }
-  return kHardenedBoolFalse;
-}

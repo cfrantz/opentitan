@@ -404,6 +404,28 @@ OT_ASSERT_MEMBER_OFFSET(owner_rescue_config_t, size, 14);
 OT_ASSERT_MEMBER_OFFSET(owner_rescue_config_t, command_allow, 16);
 OT_ASSERT_SIZE(owner_rescue_config_t, 16);
 
+#define RESCUE_PROTOCOL ((bitfield_field32_t){.mask = 0xFF, .index = 24})
+#define RESCUE_ENTER_ON_FAIL_BIT 23
+#define RESCUE_TIMEOUT_ENABLED_BIT 22
+#define RESCUE_TIMEOUT_SECONDS ((bitfield_field32_t){.mask = 0x3F, .index = 16})
+#define RESCUE_GPIO_PULL_EN_BIT 9
+#define RESCUE_GPIO_VALUE_BIT 8
+#define RESCUE_DETECT ((bitfield_field32_t){.mask = 0x03, .index = 6})
+#define RESCUE_DETECT_INDEX ((bitfield_field32_t){.mask = 0x3F, .index = 0})
+
+typedef enum rescue_protocol {
+  kRescueProtocolXmodem = 'X',
+  kRescueProtocolUsbDfu = 'U',
+  kRescueProtocolSpiDfu = 'S',
+} rescue_protocol_t;
+
+typedef enum rescue_detect {
+  kRescueDetectNone = 0,
+  kRescueDetectBreak = 1,
+  kRescueDetectStrap = 2,
+  kRescueDetectGpio = 3,
+} rescue_detect_t;
+
 /**
  * The owner Integration Specific Firmware Binding (ISFB) configuration
  * describes the configuration parameters for the ISFB region.

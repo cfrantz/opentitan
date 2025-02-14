@@ -13,6 +13,7 @@
 #include "sw/device/silicon_creator/lib/base/sec_mmio.h"
 #include "sw/device/silicon_creator/lib/boot_data.h"
 #include "sw/device/silicon_creator/lib/drivers/flash_ctrl.h"
+#include "sw/device/silicon_creator/lib/drivers/pinmux.h"
 #include "sw/device/silicon_creator/lib/error.h"
 
 #include "flash_ctrl_regs.h"
@@ -169,6 +170,7 @@ rom_error_t owner_block_parse(const owner_block_t *block,
           if ((hardened_bool_t)config->rescue != kHardenedBoolFalse)
             return kErrorOwnershipDuplicateItem;
           config->rescue = (const owner_rescue_config_t *)item;
+          owner_block_rescue_apply(config->rescue->rescue_type);
         }
         break;
       default:
@@ -405,6 +407,27 @@ rom_error_t owner_block_info_apply(const owner_flash_info_config_t *info) {
       };
       flash_ctrl_info_perms_set(&page, perm);
     }
+  }
+  return kErrorOk;
+}
+
+rom_error_t owner_block_rescue_apply(uint32_t rescue_type) {
+  rescue_detect_t detect = bitfield_field32_read(rescue_type, RESCUE_DETECT);
+  uint32_t index = bitfield_field32_read(rescue_type, RESCUE_DETECT_INDEX);
+  bool pull_en = bitfield_bit32_read(rescue_type, RESCUE_GPIO_PULL_EN_BIT);
+  bool gpio_value = bitfield_bit32_read(rescue_type, RESCUE_GPIO_VALUE_BIT);
+  switch (detect) {
+    case kRescueDetectGpio:
+      if (index <= kTopEarlgreyMuxedPadsLast) {
+        // Set the pad for input as Gpio0.
+        pinmux_configure_input(0, index + 2);
+        // Maybe enable the pull resistor in the opposite direction of the
+        // detection value.
+        pinmux_enable_pull(index, pull_en, !gpio_value);
+      }
+      break;
+    default:
+        /* nothing to do */;
   }
   return kErrorOk;
 }

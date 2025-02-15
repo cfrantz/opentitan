@@ -11,9 +11,12 @@ use crate::chip::boot_log::BootLog;
 use crate::chip::boot_svc::{BootSlot, BootSvc, OwnershipActivateRequest, OwnershipUnlockRequest};
 use crate::chip::device_id::DeviceId;
 use crate::io::uart::UartParams;
+use crate::io::gpio::{PinMode};
 use crate::with_unknown;
+use crate::util::parse_int::ParseInt;
 
 pub mod serial;
+pub mod dfu;
 pub mod xmodem;
 
 pub use serial::RescueSerial;
@@ -63,6 +66,15 @@ impl RescueParams {
             RescueProtocol::SpiDfu => self.create_spidfu(transport),
         }
     }
+
+    pub fn set_trigger(&self, transport: &TransportWrapper, trigger: bool) -> Result<()> {
+        match self.trigger {
+            RescueTrigger::SerialBreak => unimplemented!(),
+            RescueTrigger::Gpio => self.set_gpio(transport, trigger),
+            RescueTrigger::Strap => self.set_strap(transport, trigger),
+        }
+    }
+
     fn create_serial(&self, transport: &TransportWrapper) -> Result<Box<dyn Rescue>> {
         ensure!(
             self.trigger == RescueTrigger::SerialBreak,
@@ -86,6 +98,39 @@ impl RescueParams {
     }
     fn create_spidfu(&self, _transport: &TransportWrapper) -> Result<Box<dyn Rescue>> {
         unimplemented!()
+    }
+
+    fn set_strap(&self, transport: &TransportWrapper, trigger: bool) -> Result<()> {
+        let mut value = if trigger { u8::from_str(&self.value)? } else { 0u8 };
+        for strap in ["SW_STRAP0", "SW_STRAP1", "SW_STRAP2"] {
+            let pin = transport.gpio_pin(strap)?;
+            match value & 3 {
+                0 => pin.write(false)?,
+                1 | 2 => log::error!("weak straps not supported yet"),
+                3 => pin.write(true)?,
+                _ => unreachable!(),
+            };
+            value >>= 2;
+        }
+        Ok(())
+    }
+
+    fn parse_pin(&self) -> Result<(&str, bool)> {
+        if let Some(pin) = self.value.strip_prefix('+') {
+            Ok((pin, true))
+        } else if let Some(pin) = self.value.strip_prefix('-') {
+            Ok((pin, false))
+        } else {
+            Ok((self.value.as_str(), true))
+        }
+    }
+
+    fn set_gpio(&self, transport: &TransportWrapper, trigger: bool) -> Result<()> {
+        let (name, mut value) = self.parse_pin()?;
+        if !trigger { value = !value };
+        let pin = transport.gpio_pin(name)?;
+        pin.set(Some(PinMode::PushPull), Some(value), None, None)?; 
+        Ok(())
     }
 }
 

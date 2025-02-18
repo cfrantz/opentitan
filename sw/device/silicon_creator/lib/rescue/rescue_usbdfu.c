@@ -15,6 +15,7 @@
 #include "sw/device/silicon_creator/lib/rescue/rescue.h"
 #include "sw/device/silicon_creator/lib/boot_data.h"
 #include "sw/device/silicon_creator/lib/dbg_print.h"
+#include "sw/device/silicon_creator/lib/drivers/rstmgr.h"
 
 #include "hw/top_earlgrey/sw/autogen/top_earlgrey.h"
 
@@ -181,7 +182,7 @@ static void dfu_control(dfu_usb_t *ctx, usb_setup_data_t *setup) {
             } else {
               usb_transfer_flags_t flags = kUsbTransferFlagsIn;
               size_t length = MIN(ctx->state.staged_len, setup->length);
-              if (length <= 2048 && length % 64 == 0) flags |= kUsbTransferFlagsShortIn;
+              if (length < setup->length && length % 64 == 0) flags |= kUsbTransferFlagsShortIn;
               usb_ep_transfer(0, ctx->state.data, length, flags);
             }
         } else {
@@ -284,24 +285,39 @@ void dfu_handler(void *_ctx, size_t ep, usb_transfer_flags_t flags,
   }
   if (flags & kUsbTransferFlagsDone) {
     int length = *(int *)data;
-    dbg_printf("Event on EP0: flags=%x length=%d\r\n", flags, length);
-    if (ctx->state.dfu_state == kDfuStateDnLoadIdle) {
+    dbg_printf("Event on EP0: flags=%x length=%d st=%d\r\n", flags, length, ctx->dfu_state);
+    if (ctx->dfu_state == kDfuStateDnLoadSync) {
+      ctx->state.offset = (uint32_t)length;
+      while (ctx->state.offset < sizeof(ctx->state.data)) {
+        ctx->state.data[ctx->state.offset++] = 0xFF;
+      }
       rom_error_t error = rescue_recv_handler(&ctx->state, ctx->bootdata);
+      dbg_printf("wrote %d bytes to %x\r\n", length, ctx->state.flash_offset);
       switch(error) {
         case kErrorOk:
           ctx->dfu_error = kDfuErrOk; break;
         default:
           ctx->dfu_error = kDfuErrVendor;
       }
-    } else if (ctx->state.dfu_state == kDfuStateUpLoadIdle) {
-      if (length < 2048) ctx->state.dfu_state = kDfuStateIdle;
+      ctx->dfu_state= kDfuStateDnLoadIdle;
+    } else if (ctx->dfu_state == kDfuStateUpLoadIdle) {
+      if (length < 2048) {
+        ctx->dfu_state = kDfuStateIdle;
+      }
       ctx->state.staged_len = 0;
     }
   }
 
-  if (ctx->dfu_state == kDfuStateManifest) {
-    dbg_printf("=== Manifesting new Firmware ===\r\n");
-    ctx->dfu_state = kDfuStateIdle;
+  if (flags & kUsbTransferFlagsReset) {
+    dfu_state_transition_t *tr = &dfu_state_table[kDfuReqBusReset][ctx->dfu_state];
+    if (tr->action == kDfuActionReset) {
+      rstmgr_reset();
+    } else {
+      validate_mode(0, &ctx->state, ctx->bootdata);
+      ctx->ep0.flags = 0;
+      ctx->ep0.device_address = 0;
+      ctx->ep0.configuration = 0;
+    }
   }
 }
 
@@ -309,6 +325,7 @@ rom_error_t rescue_protocol(boot_data_t *bootdata,
                             const owner_rescue_config_t *config) {
   set_serialnumber();
   dfu_usb_t ctx = {
+      .bootdata = bootdata,
       .ep0 =
           {
               .device_desc = &device_desc,
@@ -318,7 +335,9 @@ rom_error_t rescue_protocol(boot_data_t *bootdata,
       .dfu_state = kDfuStateIdle,
       .dfu_error = kDfuErrOk,
   };
+  dbg_printf("USB-DFU rescue ready\r\n");
   rescue_state_init(&ctx.state, config);
+  pinmux_init_usb();
   usb_init();
   usb_ep_init(0, kUsbEndpointTypeControl, 0x40, dfu_handler, &ctx);
   usb_enable(true);
@@ -326,10 +345,4 @@ rom_error_t rescue_protocol(boot_data_t *bootdata,
     usb_poll();
   }
   return kErrorOk;
-}
-
-hardened_bool_t rescue_detect_entry(const owner_rescue_config_t *config) {
-  pinmux_init_usb();
-  dbg_printf("rescue: DFU-USB ready\r\n");
-  return kHardenedBoolTrue;
 }

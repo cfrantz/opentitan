@@ -18,8 +18,10 @@ use crate::util::parse_int::ParseInt;
 pub mod serial;
 pub mod dfu;
 pub mod xmodem;
+pub mod usbdfu;
 
 pub use serial::RescueSerial;
+pub use usbdfu::UsbDfu;
 
 #[derive(Debug, Error)]
 pub enum RescueError {
@@ -56,6 +58,8 @@ pub struct RescueParams {
     pub value: String,
     #[command(flatten)]
     uart: UartParams,
+    #[arg(long)]
+    pub usb_serial: Option<String>,
 }
 
 impl RescueParams {
@@ -90,12 +94,25 @@ impl RescueParams {
                 self.value
             ))
         );
-
         Ok(Box::new(RescueSerial::new(self.uart.create(transport)?)))
     }
+
     fn create_usbdfu(&self, _transport: &TransportWrapper) -> Result<Box<dyn Rescue>> {
-        unimplemented!()
+        ensure!(
+            self.trigger != RescueTrigger::SerialBreak,
+            RescueError::Configuration(format!(
+                "Usb-DFU does not support trigger {:?}",
+                self.trigger
+            ))
+        );
+        ensure!(
+            !self.value.is_empty(),
+            RescueError::Configuration(
+                "Usb-DFU requires a trigger value".into())
+        );
+        Ok(Box::new(UsbDfu::new(self.clone())))
     }
+
     fn create_spidfu(&self, _transport: &TransportWrapper) -> Result<Box<dyn Rescue>> {
         unimplemented!()
     }

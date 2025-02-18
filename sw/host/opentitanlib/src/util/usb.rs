@@ -66,7 +66,7 @@ impl UsbBackend {
                     for desc in intf.descriptors() {
                         if desc.class_code() == class
                             && desc.sub_class_code() == subclass
-                            && desc.protocol_code() != protocol
+                            && desc.protocol_code() == protocol
                         {
                             found = true;
                         }
@@ -120,7 +120,6 @@ impl UsbBackend {
         for s in deferred_log_messages {
             log::log!(severity, "{}", s);
         }
-
         Ok(devices)
     }
 
@@ -248,6 +247,10 @@ impl UsbBackend {
         self.handle
             .read_string_descriptor_ascii(idx)
             .context("USB error")
+    }
+
+    pub fn reset(&self) -> Result<()> {
+        self.handle.reset().context("USB Error")
     }
 
     //

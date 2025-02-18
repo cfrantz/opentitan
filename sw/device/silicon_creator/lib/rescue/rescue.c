@@ -196,7 +196,7 @@ rom_error_t rescue_send_handler(rescue_state_t *state, boot_data_t *bootdata) {
           state->mode == kRescueModeOwnerPage0 ? &kFlashCtrlInfoPageOwnerSlot0
                                                : &kFlashCtrlInfoPageOwnerSlot1,
           0, sizeof(state->data) / sizeof(uint32_t), state->data));
-      state->offset = sizeof(state->data);
+      state->staged_len = sizeof(state->data);
       break;
 
     case kRescueModeBootSvcReq:
@@ -290,10 +290,14 @@ hardened_bool_t rescue_detect_entry(const owner_rescue_config_t *config) {
     index = bitfield_field32_read(config->rescue_type, RESCUE_DETECT_INDEX);
     gpio_val = bitfield_bit32_read(config->rescue_type, RESCUE_GPIO_VALUE_BIT);
   }
+  dbg_printf("rescue detect = %d, value = %d straps=%d\r\n", detect, index, pinmux_read_straps());
+
   switch (detect) {
     case kRescueDetectNone:
+      dbg_printf("detect none\r\n");
       break;
     case kRescueDetectBreak:
+      dbg_printf("detect break\r\n");
       if (uart_break_detect(kRescueDetectTime) == kHardenedBoolTrue) {
         dbg_printf("rescue: remember to clear break\r\n");
         uart_enable_receiver();
@@ -301,15 +305,19 @@ hardened_bool_t rescue_detect_entry(const owner_rescue_config_t *config) {
       }
       break;
     case kRescueDetectGpio:
+      dbg_printf("detect gpio\r\n");
       if (pinmux_read_gpio(0) == gpio_val) {
         return kHardenedBoolTrue;
       }
       break;
     case kRescueDetectStrap:
+      dbg_printf("detect straps\r\n");
       if (pinmux_read_straps() == index) {
+        dbg_printf("detect true\r\n");
         return kHardenedBoolTrue;
       }
       break;
   }
+  dbg_printf("detect = false\r\n");
   return kHardenedBoolFalse;
 }

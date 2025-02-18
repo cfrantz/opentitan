@@ -64,6 +64,7 @@ typedef enum dfu_action_t {
   kDfuActionStatusResponse,
   kDfuActionStateResponse,
   kDfuActionClearError,
+  kDfuActionReset,
 } dfu_action_t;
 
 typedef struct dfu_state_transition {

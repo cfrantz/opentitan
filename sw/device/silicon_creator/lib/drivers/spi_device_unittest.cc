@@ -73,7 +73,7 @@ TEST_F(InitTest, Init) {
       sfdp_buffer;
   sfdp_buffer.fill(std::numeric_limits<uint32_t>::max());
   std::memcpy(sfdp_buffer.data(), &kSpiDeviceSfdpTable,
-              sizeof(kSpiDeviceSfdpTable));
+              kSpiDeviceSfdpTableSize);
   uint32_t offset =
       base_ + SPI_DEVICE_EGRESS_BUFFER_REG_OFFSET + kSpiDeviceSfdpAreaOffset;
   for (size_t i = 0; i < sfdp_buffer.size(); ++i) {
@@ -162,7 +162,7 @@ TEST_F(InitTest, Init) {
                          {SPI_DEVICE_CMD_INFO_WRDI_VALID_BIT, 1},
                      });
 
-  spi_device_init();
+  spi_device_init_bootstrap();
 }
 
 TEST_F(SpiDeviceTest, FlashStatusClear) {

@@ -34,20 +34,7 @@ enum {
   kSpiDeviceJedecContCode = 0x7f,
   kSpiDeviceJedecContCodeCount = 12,
   kSpiDeviceJedecManufId = 0xef,
-  /**
-   * LSB of the 2-byte device ID.
-   *
-   * Density is expressed as log2(flash size in bytes).
-   */
-  kSpiDeviceJedecDensity = 20,
-  /**
-   * Size of the JEDEC Basic Flash Parameter Table (BFPT) in words.
-   */
-  kSpiDeviceBfptNumWords = 23,
-  /**
-   * Size of the SFDP table in words.
-   */
-  kSpiDeviceSfdpTableNumWords = 27,
+
   /**
    * Address value used when a command does not have an address.
    *
@@ -247,20 +234,6 @@ OT_ASSERT_MEMBER_OFFSET(spi_device_param_header_t, param_id_msb, 7);
 OT_ASSERT_SIZE(spi_device_param_header_t, 8);
 
 /**
- * Basic Flash Parameter Table (BFPT) (JESD216F 6.4).
- *
- * This is a mandatory table defined by JEDEC that identifies some of the basic
- * features of a SPI protocol flash memory device.
- */
-typedef struct spi_device_bfpt {
-  uint32_t data[kSpiDeviceBfptNumWords];
-} spi_device_bfpt_t;
-OT_ASSERT_SIZE(spi_device_bfpt_t, 92);
-static_assert(sizeof(spi_device_bfpt_t) ==
-                  kSpiDeviceBfptNumWords * sizeof(uint32_t),
-              "`kSpiDeviceBfptNumWords` is incorrect");
-
-/**
  * SFDP table.
  */
 typedef struct spi_device_sfdp_table {
@@ -273,22 +246,23 @@ typedef struct spi_device_sfdp_table {
    */
   spi_device_param_header_t bfpt_header;
   /**
-   * Basic Flash Parameters Table (BFPT).
+   * Basic Flash Parameter Table (BFPT) (JESD216F 6.4).
+   *
+   * This is a mandatory table defined by JEDEC that identifies some of the
+   * basic features of a SPI protocol flash memory device.
    */
-  spi_device_bfpt_t bfpt;
+  uint32_t bfpt[];
 } spi_device_sfdp_table_t;
 OT_ASSERT_MEMBER_OFFSET(spi_device_sfdp_table_t, sfdp_header, 0);
 OT_ASSERT_MEMBER_OFFSET(spi_device_sfdp_table_t, bfpt_header, 8);
 OT_ASSERT_MEMBER_OFFSET(spi_device_sfdp_table_t, bfpt, 16);
-OT_ASSERT_SIZE(spi_device_sfdp_table_t, 108);
+OT_ASSERT_SIZE(spi_device_sfdp_table_t, 16);
 static_assert(sizeof(spi_device_sfdp_table_t) <= kSpiDeviceSfdpAreaNumBytes,
               "SFDP table must fit in the space provided by spi_device");
-static_assert(sizeof(spi_device_sfdp_table_t) ==
-                  kSpiDeviceSfdpTableNumWords * sizeof(uint32_t),
-              "`kSpiDeviceSfdpTableNumWords` is incorrect");
 
 // Note: Declared here to be able to use in tests.
 extern const spi_device_sfdp_table_t kSpiDeviceSfdpTable;
+extern const size_t kSpiDeviceSfdpTableSize;
 
 /**
  * Initializes the spi_device in flash mode for bootstrap in ROM.
@@ -302,7 +276,27 @@ extern const spi_device_sfdp_table_t kSpiDeviceSfdpTable;
  *   - READ_JEDEC_ID
  *   - READ_SFDP
  */
-void spi_device_init(void);
+void spi_device_init_bootstrap(void);
+
+/**
+ * Initializes the spi_device in flash mode.
+ *
+ * This function initializes the spi_device in the following configuration:
+ * - CPOL = 0, CPHA = 0 (clock low in idle, data sampled on rising clock edge).
+ * - MSb-first bit order for RX and TX.
+ * - Flash mode with 3-byte addressing.
+ * - The given `sfdp_table` is written to the SFDP area in the buffer.
+ * - Commands:
+ *   - READ_JEDEC_ID
+ *   - READ_SFDP
+ *
+ * @param log2_density The density to be reported by READ_JEDEC_ID.
+ * @param sfdp_table The SFDP table to program into the SFDP area.
+ * @param sfdp_len_words The length of the SFDP table in 32-bit words.
+ */
+void spi_device_init(uint8_t log2_density,
+                     const spi_device_sfdp_table_t *sfdp_table,
+                     size_t sfdp_len_words);
 
 /**
  * A SPI flash command.
@@ -358,6 +352,13 @@ void spi_device_flash_status_clear(void);
  */
 OT_WARN_UNUSED_RESULT
 uint32_t spi_device_flash_status_get(void);
+
+/**
+ * Enables the SPI mailbox at the given SPI address.
+ *
+ * @param address The SPI address of the mailbox.
+ */
+void spi_device_enable_mailbox(uint32_t address);
 
 #ifdef __cplusplus
 }

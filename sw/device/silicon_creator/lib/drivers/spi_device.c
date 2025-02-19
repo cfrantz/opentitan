@@ -8,6 +8,7 @@
 #include "sw/device/lib/base/bitfield.h"
 #include "sw/device/lib/base/memory.h"
 #include "sw/device/silicon_creator/lib/drivers/lifecycle.h"
+#include "sw/device/silicon_creator/lib/drivers/spi_device_bfpt.h"
 #include "sw/device/silicon_creator/lib/error.h"
 
 #include "flash_ctrl_regs.h"
@@ -39,6 +40,20 @@ enum {
    * (JESD216F 6.2.1).
    */
   kSfdpSignature = 0x50444653,
+  /**
+   * LSB of the 2-byte device ID.
+   *
+   * Density is expressed as log2(flash size in bytes).
+   */
+  kSpiDeviceJedecDensity = 20,
+  /**
+   * Size of the JEDEC Basic Flash Parameter Table (BFPT) in words.
+   */
+  kSpiDeviceBfptNumWords = 23,
+  /**
+   * Size of the SFDP table in words.
+   */
+  kSpiDeviceSfdpTableNumWords = 27,
   /**
    * Number of parameter headers in the SFDP data structure (JESD216F 6.2.2).
    *
@@ -90,38 +105,6 @@ enum {
 
 static_assert(kBfptTablePointer % sizeof(uint32_t) == 0,
               "BFPT must be word-aligned");
-
-/**
- * Computes the width of a field in a Basic Flash Parameters Table (BFPT) word.
- *
- * @param upper Upper (start) bit of the field (inclusive).
- * @param lower Lower (end) bit of the field (inclusive).
- */
-#define BFPT_FIELD_WIDTH(upper, lower) ((upper) - (lower) + 1)
-
-/**
- * Computes the mask for a field in a BFPT word.
- *
- * @param upper Upper (start) bit of the field (inclusive).
- * @param lower Lower (end) bit of the field (inclusive).
- */
-#define BFPT_FIELD_MASK(upper, lower) \
-  (((UINT64_C(1) << BFPT_FIELD_WIDTH(upper, lower)) - 1) << (lower))
-
-/**
- * Computes the value of a field in a BFPT word.
- *
- * Bits outside the field are left as 1s. This macro is intended for expanding a
- * list of fields, e.g. `BFPT_WORD_1`, to compute the value of a BFPT word using
- * bitwise AND.
- *
- * @param upper Upper (start) bit of the field (inclusive).
- * @param lower Lower (end) bit of the field (inclusive).
- * @param value Value of the field.
- */
-#define BFPT_FIELD_VALUE(upper, lower, value) \
-  ((uint32_t)~BFPT_FIELD_MASK(upper, lower) | \
-   (BFPT_FIELD_MASK(upper, lower) & ((uint32_t)(value) << (uint32_t)(lower))))
 
 // Note: Words below are numbered starting from 1 to match JESD216F. Some fields
 // that are not supported by OpenTitan are merged for the sake of conciseness.
@@ -402,6 +385,26 @@ static_assert(kBfptTablePointer % sizeof(uint32_t) == 0,
   X(31,  0, kBfptNotSupported)
 // clang-format on
 
+#define BFPT_INITIALIZER                                              \
+  {                                                                   \
+      BFPT_WORD_1(BFPT_FIELD_VALUE),  BFPT_WORD_2(BFPT_FIELD_VALUE),  \
+      BFPT_WORD_3(BFPT_FIELD_VALUE),  BFPT_WORD_4(BFPT_FIELD_VALUE),  \
+      BFPT_WORD_5(BFPT_FIELD_VALUE),  BFPT_WORD_6(BFPT_FIELD_VALUE),  \
+      BFPT_WORD_7(BFPT_FIELD_VALUE),  BFPT_WORD_8(BFPT_FIELD_VALUE),  \
+      BFPT_WORD_9(BFPT_FIELD_VALUE),  BFPT_WORD_10(BFPT_FIELD_VALUE), \
+      BFPT_WORD_11(BFPT_FIELD_VALUE), BFPT_WORD_12(BFPT_FIELD_VALUE), \
+      BFPT_WORD_13(BFPT_FIELD_VALUE), BFPT_WORD_14(BFPT_FIELD_VALUE), \
+      BFPT_WORD_15(BFPT_FIELD_VALUE), BFPT_WORD_16(BFPT_FIELD_VALUE), \
+      BFPT_WORD_17(BFPT_FIELD_VALUE), BFPT_WORD_18(BFPT_FIELD_VALUE), \
+      BFPT_WORD_19(BFPT_FIELD_VALUE), BFPT_WORD_20(BFPT_FIELD_VALUE), \
+      BFPT_WORD_21(BFPT_FIELD_VALUE), BFPT_WORD_22(BFPT_FIELD_VALUE), \
+      BFPT_WORD_23(BFPT_FIELD_VALUE),                                 \
+  }
+
+static_assert(sizeof((uint32_t[])BFPT_INITIALIZER) ==
+                  kSpiDeviceBfptNumWords * sizeof(uint32_t),
+              "Unexpected size of the BFPT initializer");
+
 const spi_device_sfdp_table_t kSpiDeviceSfdpTable = {
     .sfdp_header =
         {
@@ -420,20 +423,15 @@ const spi_device_sfdp_table_t kSpiDeviceSfdpTable = {
             .table_pointer = {kBfptTablePointer},
             .param_id_msb = kBfptParamIdMsb,
         },
-    .bfpt = {{
-        BFPT_WORD_1(BFPT_FIELD_VALUE),  BFPT_WORD_2(BFPT_FIELD_VALUE),
-        BFPT_WORD_3(BFPT_FIELD_VALUE),  BFPT_WORD_4(BFPT_FIELD_VALUE),
-        BFPT_WORD_5(BFPT_FIELD_VALUE),  BFPT_WORD_6(BFPT_FIELD_VALUE),
-        BFPT_WORD_7(BFPT_FIELD_VALUE),  BFPT_WORD_8(BFPT_FIELD_VALUE),
-        BFPT_WORD_9(BFPT_FIELD_VALUE),  BFPT_WORD_10(BFPT_FIELD_VALUE),
-        BFPT_WORD_11(BFPT_FIELD_VALUE), BFPT_WORD_12(BFPT_FIELD_VALUE),
-        BFPT_WORD_13(BFPT_FIELD_VALUE), BFPT_WORD_14(BFPT_FIELD_VALUE),
-        BFPT_WORD_15(BFPT_FIELD_VALUE), BFPT_WORD_16(BFPT_FIELD_VALUE),
-        BFPT_WORD_17(BFPT_FIELD_VALUE), BFPT_WORD_18(BFPT_FIELD_VALUE),
-        BFPT_WORD_19(BFPT_FIELD_VALUE), BFPT_WORD_20(BFPT_FIELD_VALUE),
-        BFPT_WORD_21(BFPT_FIELD_VALUE), BFPT_WORD_22(BFPT_FIELD_VALUE),
-        BFPT_WORD_23(BFPT_FIELD_VALUE),
-    }}};
+    .bfpt = BFPT_INITIALIZER,
+};
+
+static_assert(sizeof(spi_device_sfdp_table_t) +
+                      kSpiDeviceBfptNumWords * sizeof(uint32_t) ==
+                  kSpiDeviceSfdpTableNumWords * sizeof(uint32_t),
+              "`kSpiDeviceSfdpTableNumWords` is incorrect");
+const size_t kSpiDeviceSfdpTableSize =
+    sizeof(spi_device_sfdp_table_t) + kSpiDeviceBfptNumWords * sizeof(uint32_t);
 
 /**
  * Configuration options for a SPI Flash command.
@@ -496,7 +494,14 @@ static void cmd_info_set(cmd_info_t cmd_info) {
   abs_mmio_write32(kBase + cmd_info.reg_offset, reg);
 }
 
-void spi_device_init(void) {
+void spi_device_init_bootstrap(void) {
+  spi_device_init(kSpiDeviceJedecDensity, &kSpiDeviceSfdpTable,
+                  kSpiDeviceSfdpTableNumWords);
+}
+
+void spi_device_init(uint8_t log2_density,
+                     const spi_device_sfdp_table_t *sfdp_table,
+                     size_t sfdp_len_words) {
   // CPOL = 0, CPHA = 0, MSb-first TX and RX, 3-byte addressing.
   uint32_t reg = bitfield_bit32_write(0, SPI_DEVICE_CFG_TX_ORDER_BIT, false);
   reg = bitfield_bit32_write(reg, SPI_DEVICE_CFG_RX_ORDER_BIT, false);
@@ -533,8 +538,8 @@ void spi_device_init(void) {
 
   // Write SFDP table to the reserved region in spi_device buffer.
   uint32_t dest = kSfdpAreaStartAddr;
-  const char *table = (const char *)&kSpiDeviceSfdpTable;
-  for (size_t i = 0; i < kSpiDeviceSfdpTableNumWords; ++i) {
+  const char *table = (const char *)sfdp_table;
+  for (size_t i = 0; i < sfdp_len_words; ++i) {
     abs_mmio_write32(dest, read_32(table));
     dest += sizeof(uint32_t);
     table += sizeof(uint32_t);
@@ -661,4 +666,11 @@ void spi_device_flash_status_clear(void) {
 
 uint32_t spi_device_flash_status_get(void) {
   return abs_mmio_read32(kBase + SPI_DEVICE_FLASH_STATUS_REG_OFFSET);
+}
+
+void spi_device_enable_mailbox(uint32_t address) {
+  abs_mmio_write32(kBase + SPI_DEVICE_MAILBOX_ADDR_REG_OFFSET, address);
+  uint32_t cfg_reg = abs_mmio_read32(kBase + SPI_DEVICE_CFG_REG_OFFSET);
+  cfg_reg = bitfield_bit32_write(cfg_reg, SPI_DEVICE_CFG_MAILBOX_EN_BIT, 1);
+  abs_mmio_write32(kBase + SPI_DEVICE_CFG_REG_OFFSET, cfg_reg);
 }

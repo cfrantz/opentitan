@@ -7,6 +7,10 @@
 
 #include <stdint.h>
 
+#include "sw/device/silicon_creator/lib/boot_data.h"
+#include "sw/device/silicon_creator/lib/drivers/usb.h"
+#include "sw/device/silicon_creator/lib/rescue/rescue.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -74,14 +78,41 @@ typedef struct dfu_state_transition {
 
 extern dfu_state_transition_t dfu_state_table[kDfuReqTotalLength]
                                              [kDfuStateTotalLength];
-
 typedef struct dfu_ctx {
-  dfu_state_t state;
-  dfu_err_t error;
+  usb_control_ctx_t ep0;
+  rescue_state_t state;
+  boot_data_t *bootdata;
   uint8_t status[6];
-  uint8_t _pad[2];
-  uint8_t buffer[2048];
+  uint8_t dfu_state;
+  uint8_t dfu_error;
+  uint8_t interface;
 } dfu_ctx_t;
+
+/**
+ * Start a DFU transfer.
+ *
+ * @param ep The endpoint number.
+ * @param data The buffer to send or receive into.
+ * @param len The length of the buffer.
+ * @param flags The direction or other attributes assocated with the transfer.
+ */
+void dfu_transport_data(size_t ep, void *data, size_t len,
+                        usb_transfer_flags_t flags);
+
+/**
+ * Handle the transport's standard setupdata requests
+ *
+ * @param ctx A pointer to the transport's control context structure.
+ * @param setup A pointer to the setupdata.
+ * @return Result of handling the setupdata.
+ */
+rom_error_t dfu_transport_setupdata(usb_control_ctx_t *ctx,
+                                    usb_setup_data_t *setup);
+
+void dfu_transport_result(rom_error_t result);
+
+void dfu_protocol_handler(void *ctx, size_t ep, usb_transfer_flags_t flags,
+                          void *data);
 
 #ifdef __cplusplus
 }

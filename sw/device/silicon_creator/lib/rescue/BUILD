@@ -74,3 +74,30 @@ cc_library(
         "//sw/device/silicon_creator/lib:error",
     ],
 )
+
+cc_library(
+    name = "dfu",
+    srcs = [
+        "dfu_state_table.c",
+    ],
+    hdrs = [
+        "dfu.h",
+    ],
+)
+
+cc_library(
+    name = "rescue_usbdfu",
+    srcs = ["rescue_usbdfu.c"],
+    deps = [
+        ":dfu",
+        ":rescue",
+        "//sw/device/lib/base:macros",
+        "//sw/device/lib/base:memory",
+        "//sw/device/silicon_creator/lib:boot_data",
+        "//sw/device/silicon_creator/lib:dbg_print",
+        "//sw/device/silicon_creator/lib:error",
+        "//sw/device/silicon_creator/lib/drivers:pinmux",
+        "//sw/device/silicon_creator/lib/drivers:rstmgr",
+        "//sw/device/silicon_creator/lib/drivers:usb",
+    ],
+)

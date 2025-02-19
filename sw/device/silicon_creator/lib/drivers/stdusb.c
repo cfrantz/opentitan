@@ -3,7 +3,9 @@
 #include "sw/device/lib/base/macros.h"
 #include "sw/device/silicon_creator/lib/drivers/usb.h"
 
-int usb_control_setupdata(usb_control_ctx_t *ctx, usb_setup_data_t *setup) {
+rom_error_t usb_control_setupdata(usb_control_ctx_t *ctx,
+                                  usb_setup_data_t *setup) {
+  rom_error_t result = kErrorOk;
   uint32_t zero = 0;
   switch (setup->request) {
     case kUsbSetupReqGetDescriptor:
@@ -32,12 +34,12 @@ int usb_control_setupdata(usb_control_ctx_t *ctx, usb_setup_data_t *setup) {
                 MIN(setup->length, (uint8_t)ctx->string_desc[index][0]),
                 kUsbTransferFlagsIn);
           } else {
-            usb_ep_stall(0, true);
+            result = kErrorUsbBadSetup;
           }
           break;
         }
         default:
-          usb_ep_stall(0, true);
+          result = kErrorUsbBadSetup;
       }
       break;
 
@@ -56,9 +58,6 @@ int usb_control_setupdata(usb_control_ctx_t *ctx, usb_setup_data_t *setup) {
     case kUsbSetupReqGetConfiguration:
       usb_ep_transfer(0, &ctx->configuration, sizeof(ctx->configuration),
                       kUsbTransferFlagsIn);
-      ctx->next.configuration = (uint8_t)setup->value;
-      usb_ep_transfer(0, NULL, 0, kUsbTransferFlagsIn);
-      ctx->flags |= kUsbControlFlagsPendingConfig;
       break;
 
     case kUsbSetupReqSetFeature:
@@ -68,7 +67,7 @@ int usb_control_setupdata(usb_control_ctx_t *ctx, usb_setup_data_t *setup) {
           usb_ep_transfer(0, NULL, 0, kUsbTransferFlagsIn);
           break;
         default:
-          usb_ep_stall(0, true);
+          result = kErrorUsbBadSetup;
       }
       break;
 
@@ -79,7 +78,7 @@ int usb_control_setupdata(usb_control_ctx_t *ctx, usb_setup_data_t *setup) {
           usb_ep_transfer(0, NULL, 0, kUsbTransferFlagsIn);
           break;
         default:
-          usb_ep_stall(0, true);
+          result = kErrorUsbBadSetup;
       }
       break;
 
@@ -110,7 +109,7 @@ int usb_control_setupdata(usb_control_ctx_t *ctx, usb_setup_data_t *setup) {
       break;
 
     default:
-      usb_ep_stall(0, true);
+      result = kErrorUsbBadSetup;
   }
-  return 0;
+  return result;
 }

@@ -132,7 +132,7 @@ void set_serialnumber(void) {
   }
 }
 
-void my_control(usb_setup_data_t *setup) {
+rom_error_t my_control(usb_setup_data_t *setup) {
   switch (setup->request) {
     case kTestReqRandomize:
       base_printf("Randomize\r\n");
@@ -176,8 +176,9 @@ void my_control(usb_setup_data_t *setup) {
       usb_ep_transfer(0, NULL, 0, kUsbTransferFlagsIn);
       break;
     default:
-      usb_ep_stall(0, true);
+      return kErrorUsbBadSetup;
   }
+  return kErrorOk;
 }
 
 void handler(void *ctx, size_t ep, usb_transfer_flags_t flags, void *data) {
@@ -187,10 +188,14 @@ void handler(void *ctx, size_t ep, usb_transfer_flags_t flags, void *data) {
         "SETUPDATA: type=%02x req=%02x value=%04x index=%04x len=%04x\r\n",
         setup->request_type, setup->request, setup->value, setup->index,
         setup->length);
+    rom_error_t error;
     if ((setup->request_type & kUsbReqTypeTypeMask) == kUsbReqTypeVendor) {
-      my_control(setup);
+      error = my_control(setup);
     } else {
-      usb_control_setupdata(&ep0, setup);
+      error = usb_control_setupdata(&ep0, setup);
+    }
+    if (error != kErrorOk) {
+      usb_ep_stall(0, true);
     }
   }
   if (flags & kUsbTransferFlagsDone) {

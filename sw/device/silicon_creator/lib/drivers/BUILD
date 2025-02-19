@@ -923,6 +923,12 @@ opentitan_test(
         EARLGREY_TEST_ENVS,
         EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
     ),
+    fpga = fpga_params(
+        test_cmd = """
+            --bootstrap={firmware}
+        """,
+        test_harness = "//sw/host/tests/chip/usb:usb_harness",
+    ),
     silicon = silicon_params(
         test_cmd = """
             --bootstrap={firmware}
@@ -931,6 +937,7 @@ opentitan_test(
     ),
     verilator = verilator_params(
         timeout = "long",
+        tags = ["broken"],
     ),
     deps = [
         ":pinmux",
@@ -947,6 +954,12 @@ opentitan_test(
         EARLGREY_TEST_ENVS,
         EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
     ),
+    fpga = fpga_params(
+        test_cmd = """
+            --bootstrap={firmware}
+        """,
+        test_harness = "//sw/host/tests/chip/usb:silicon_creator_harness",
+    ),
     silicon = silicon_params(
         test_cmd = """
             --bootstrap={firmware}
@@ -955,6 +968,7 @@ opentitan_test(
     ),
     verilator = verilator_params(
         timeout = "long",
+        tags = ["broken"],
     ),
     deps = [
         ":hmac",

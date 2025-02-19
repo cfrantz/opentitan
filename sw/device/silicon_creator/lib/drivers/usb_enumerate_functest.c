@@ -104,7 +104,10 @@ void handler(void *ctx, size_t ep, usb_transfer_flags_t flags, void *data) {
         "SETUPDATA: type=%02x req=%02x value=%04x index=%04x len=%04x\r\n",
         setup->request_type, setup->request, setup->value, setup->index,
         setup->length);
-    usb_control_setupdata(&ep0, (usb_setup_data_t *)data);
+    rom_error_t error = usb_control_setupdata(&ep0, (usb_setup_data_t *)data);
+    if (error != kErrorOk) {
+      usb_ep_stall(0, true);
+    }
   }
   if (flags & kUsbTransferFlagsDone) {
     if (ep0.flags & kUsbControlFlagsPendingAddress) {

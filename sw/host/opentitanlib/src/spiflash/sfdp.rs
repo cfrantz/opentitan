@@ -471,7 +471,7 @@ pub struct JedecParams {
 
     /// The density of the part. In the jedec table, this is expressed in bits,
     /// but it is converted to bytes here.
-    pub density: u32,
+    pub density: u64,
     /// Parameters for the various supported FastRead modes.
     pub param_112: FastReadParam,
     pub param_122: FastReadParam,
@@ -622,9 +622,9 @@ impl TryFrom<&[u8]> for JedecParams {
     fn try_from(buf: &[u8]) -> Result<Self, Self::Error> {
         let p = InternalJedecParams::try_from(buf)?;
         let size_bytes = if p.density_pow2()? {
-            1u32 << ((p.density()? & 0x7FFF_FFFF) - 8)
+            1u64 << ((p.density()? & 0x7FFF_FFFF) - 8)
         } else {
-            (p.density()? + 1) / 8
+            ((p.density()? + 1) / 8) as u64
         };
         let mut jedec = JedecParams {
             block_erase_size: p.block_erase_size()?,

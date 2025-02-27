@@ -17,11 +17,11 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("address out of bounds: {0} >= {1}")]
-    AddressOutOfBounds(u32, u32),
+    AddressOutOfBounds(u64, u64),
     #[error("erase at address {0} not aligned on {1}-byte boundary")]
-    BadEraseAddress(u32, u32),
+    BadEraseAddress(u64, u32),
     #[error("erase length {0} not a multiple of {1} bytes")]
-    BadEraseLength(u32, u32),
+    BadEraseLength(u64, u32),
     #[error("bad sequence length: {0}")]
     BadSequenceLength(usize),
     #[error("unsupported mode: {0:?}")]
@@ -119,7 +119,7 @@ pub enum EraseMode {
 }
 
 pub struct SpiFlash {
-    pub size: u32,
+    pub size: u64,
     pub program_size: u32,
     pub address_mode: AddressMode,
     pub read_mode: ReadMode,
@@ -422,11 +422,11 @@ impl SpiFlash {
 
     /// Erase a segment of the SPI flash starting at `address` for `length` bytes.
     /// The address and length must be sector aligned.
-    pub fn erase(&self, spi: &dyn Target, address: u32, length: u32) -> Result<&Self> {
+    pub fn erase(&self, spi: &dyn Target, address: u32, length: u64) -> Result<&Self> {
         self.erase_with_progress(spi, address, length, &NoProgressBar)
     }
 
-    fn select_erase(&self, address: u32, length: u32) -> Result<&SectorErase> {
+    fn select_erase(&self, address: u64, length: u64) -> Result<&SectorErase> {
         if self.erase_mode == EraseMode::Standard {
             // We assume the last element of the `erase` list is the standard
             // SECTOR_ERASE.  So far, this has been true for all eeproms
@@ -434,7 +434,7 @@ impl SpiFlash {
             return Ok(self.erase.last().unwrap());
         }
         for e in self.erase.iter() {
-            if address % e.size == 0 && length >= e.size {
+            if address % (e.size as u64) == 0 && length >= (e.size as u64) {
                 return Ok(e);
             }
         }
@@ -448,14 +448,15 @@ impl SpiFlash {
         &self,
         spi: &dyn Target,
         address: u32,
-        length: u32,
+        length: u64,
         progress: &dyn ProgressIndicator,
     ) -> Result<&Self> {
+        let address = address as u64;
         let min_erase_size = self.erase.last().unwrap().size;
-        if address % min_erase_size != 0 {
+        if address % (min_erase_size as u64) != 0 {
             return Err(Error::BadEraseAddress(address, min_erase_size).into());
         }
-        if length % min_erase_size != 0 {
+        if length % (min_erase_size as u64) != 0 {
             return Err(Error::BadEraseLength(length, min_erase_size).into());
         }
         progress.new_stage("", length as usize);
@@ -465,11 +466,15 @@ impl SpiFlash {
             let erase = self.select_erase(addr, end - addr)?;
             spi.run_eeprom_transactions(&mut [
                 Transaction::Command(MODE_111.cmd(SpiFlash::WRITE_ENABLE)),
-                Transaction::Command(MODE_111.cmd_addr(erase.opcode, addr, self.address_mode)),
+                Transaction::Command(MODE_111.cmd_addr(
+                    erase.opcode,
+                    addr.try_into()?,
+                    self.address_mode,
+                )),
                 Transaction::WaitForBusyClear,
             ])?;
             progress.progress((addr - address) as usize);
-            addr += erase.size;
+            addr += erase.size as u64;
         }
         progress.progress(length as usize);
         Ok(self)

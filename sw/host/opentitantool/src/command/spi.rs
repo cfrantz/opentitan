@@ -178,7 +178,7 @@ pub struct SpiErase {
     start: Option<u32>,
     /// Number of bytes to erase.
     #[arg(short = 'n', long, required_unless_present = "chip")]
-    length: Option<u32>,
+    length: Option<u64>,
     /// Erase the whole chip.
     #[arg(long)]
     chip: bool,
@@ -195,7 +195,7 @@ pub struct SpiErase {
 
 #[derive(Debug, serde::Serialize)]
 pub struct SpiEraseResponse {
-    length: u32,
+    length: u64,
     bytes_per_second: f64,
 }
 

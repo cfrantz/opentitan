@@ -88,6 +88,13 @@ enum {
  */
 typedef enum spi_device_opcode {
   /**
+   * READ command.
+   *
+   * This command is handled by the spi_device. Upon receiving this command,
+   * spi_device sends the bits of the status register.
+   */
+  kSpiDeviceOpcodeRead = 0x03,
+  /**
    * READ_STATUS command.
    *
    * This command is handled by the spi_device. Upon receiving this command,
@@ -359,6 +366,8 @@ uint32_t spi_device_flash_status_get(void);
  * @param address The SPI address of the mailbox.
  */
 void spi_device_enable_mailbox(uint32_t address);
+
+void spi_device_copy_to_egress(uint32_t egress_offset, const void *data, size_t len);
 
 #ifdef __cplusplus
 }

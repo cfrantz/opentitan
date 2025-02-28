@@ -38,7 +38,7 @@ static rom_error_t dfu_control(dfu_ctx_t *ctx, usb_setup_data_t *setup) {
     switch (tr->action) {
       case kDfuActionNone:
         ctx->dfu_state = tr->next[0];
-        dfu_transport_data(0, NULL, 0, kUsbTransferFlagsIn);
+        dfu_transport_data(ctx, NULL, 0, kUsbTransferFlagsIn);
         break;
       case kDfuActionStall:
         ctx->dfu_state = tr->next[0];
@@ -50,7 +50,7 @@ static rom_error_t dfu_control(dfu_ctx_t *ctx, usb_setup_data_t *setup) {
             (setup->request == kDfuReqDnLoad ||
              setup->request == kDfuReqUpLoad)) {
           if (setup->request == kDfuReqDnLoad) {
-            dfu_transport_data(0, ctx->state.data, setup->length,
+            dfu_transport_data(ctx, ctx->state.data, setup->length,
                                setup->length == 0 ? kUsbTransferFlagsIn
                                                   : kUsbTransferFlagsOut);
           } else {
@@ -58,7 +58,7 @@ static rom_error_t dfu_control(dfu_ctx_t *ctx, usb_setup_data_t *setup) {
             size_t length = MIN(ctx->state.staged_len, setup->length);
             if (length < setup->length && length % 64 == 0)
               flags |= kUsbTransferFlagsShortIn;
-            dfu_transport_data(0, ctx->state.data, length, flags);
+            dfu_transport_data(ctx, ctx->state.data, length, flags);
           }
         } else {
           result = kErrorUsbBadSetup;
@@ -72,17 +72,17 @@ static rom_error_t dfu_control(dfu_ctx_t *ctx, usb_setup_data_t *setup) {
         ctx->status[3] = 0;
         ctx->status[4] = (uint8_t)ctx->dfu_state;
         ctx->status[5] = 0;
-        dfu_transport_data(0, ctx->status, sizeof(ctx->status),
+        dfu_transport_data(ctx, ctx->status, sizeof(ctx->status),
                            kUsbTransferFlagsIn);
         break;
       case kDfuActionStateResponse:
         ctx->dfu_state = tr->next[0];
-        dfu_transport_data(0, &ctx->dfu_state, 1, kUsbTransferFlagsIn);
+        dfu_transport_data(ctx, &ctx->dfu_state, 1, kUsbTransferFlagsIn);
         break;
       case kDfuActionClearError:
         ctx->dfu_state = tr->next[0];
         ctx->dfu_error = kDfuErrOk;
-        dfu_transport_data(0, NULL, 0, kUsbTransferFlagsIn);
+        dfu_transport_data(ctx, NULL, 0, kUsbTransferFlagsIn);
         break;
     }
   } else {
@@ -143,7 +143,7 @@ void dfu_protocol_handler(void *_ctx, size_t ep, usb_transfer_flags_t flags,
         case kUsbSetupReqSetInterface: {
           uint32_t mode = ((uint32_t)setup->value << 16) | setup->index;
           if (validate_mode(mode, &ctx->state, ctx->bootdata) == kErrorOk) {
-            dfu_transport_data(0, NULL, 0, kUsbTransferFlagsIn);
+            dfu_transport_data(ctx, NULL, 0, kUsbTransferFlagsIn);
           } else {
             error = kErrorUsbBadSetup;
           }
@@ -158,13 +158,13 @@ void dfu_protocol_handler(void *_ctx, size_t ep, usb_transfer_flags_t flags,
           if (validate_mode(setup->value, &ctx->state, ctx->bootdata) ==
               kErrorOk) {
             ctx->interface = (uint8_t)setup->value;
-            dfu_transport_data(0, NULL, 0, kUsbTransferFlagsIn);
+            dfu_transport_data(ctx, NULL, 0, kUsbTransferFlagsIn);
           } else {
             error = kErrorUsbBadSetup;
           }
           break;
         case kUsbSetupReqGetInterface:
-          dfu_transport_data(0, &ctx->interface, sizeof(ctx->interface),
+          dfu_transport_data(ctx, &ctx->interface, sizeof(ctx->interface),
                              kUsbTransferFlagsIn);
           break;
         default:
@@ -194,6 +194,7 @@ void dfu_protocol_handler(void *_ctx, size_t ep, usb_transfer_flags_t flags,
         ctx->state.data[ctx->state.offset++] = 0xFF;
       }
       rom_error_t error = rescue_recv_handler(&ctx->state, ctx->bootdata);
+      dbg_printf("recv_handler %x\r\n", error);
       switch (error) {
         case kErrorOk:
           ctx->dfu_error = kDfuErrOk;

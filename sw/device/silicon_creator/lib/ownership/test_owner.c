@@ -175,8 +175,30 @@ rom_error_t sku_creator_owner_init(boot_data_t *bootdata,
           },
   };
 
+  owner_rescue_config_t *rescue = (owner_rescue_config_t *)((uintptr_t)app + app->header.length);
+  *rescue = (owner_rescue_config_t){
+    .header =
+          {
+              .tag = kTlvTagRescueConfig,
+              .length = sizeof(*rescue) + 10 * sizeof(uint32_t),
+          },
+        .rescue_type = 0x55000383,
+        .start = 32,
+        .size = 224,
+  };
+  rescue->command_allow[0] = 0x424c4f47;
+  rescue->command_allow[1] = 0x42525350;
+  rescue->command_allow[2] = 0x42524551;
+  rescue->command_allow[3] = 0x4f574e52;
+  rescue->command_allow[4] = 0x4f504730;
+  rescue->command_allow[5] = 0x4f504731;
+  rescue->command_allow[6] = 0x4f544944;
+  rescue->command_allow[7] = 0x52455351;
+  rescue->command_allow[8] = 0x52455342;
+  rescue->command_allow[9] = 0x5458454e;
+
   // Fill the remainder of the data segment with the end tag (0x5a5a5a5a).
-  app = (owner_application_key_t *)((uintptr_t)app + app->header.length);
+  app = (owner_application_key_t *)((uintptr_t)rescue + rescue->header.length);
   size_t len = (uintptr_t)(owner_page[0].data + sizeof(owner_page[0].data)) -
                (uintptr_t)app;
   memset(app, 0x5a, len);

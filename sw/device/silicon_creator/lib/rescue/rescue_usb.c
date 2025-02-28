@@ -113,9 +113,10 @@ static void set_serialnumber(void) {
   }
 }
 
-void dfu_transport_data(size_t ep, void *data, size_t len,
+void dfu_transport_data(dfu_ctx_t *ctx, void *data, size_t len,
                         usb_transfer_flags_t flags) {
-  usb_ep_transfer(ep, data, len, flags);
+  (void)ctx;
+  usb_ep_transfer(0, data, len, flags);
 }
 
 rom_error_t dfu_transport_setupdata(usb_control_ctx_t *ctx,

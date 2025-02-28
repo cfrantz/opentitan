@@ -112,3 +112,26 @@ cc_library(
         "//sw/device/silicon_creator/lib/drivers:usb",
     ],
 )
+
+cc_library(
+    name = "rescue_spidfu",
+    srcs = [
+        "rescue_spi.c",
+        "sfdp.c",
+    ],
+    copts = [
+        "-Wno-gnu-flexible-array-initializer",
+    ],
+    deps = [
+        ":dfu",
+        ":rescue",
+        "//sw/device/lib/base:macros",
+        "//sw/device/lib/base:memory",
+        "//sw/device/silicon_creator/lib:boot_data",
+        "//sw/device/silicon_creator/lib:dbg_print",
+        "//sw/device/silicon_creator/lib:error",
+        "//sw/device/silicon_creator/lib/drivers:rstmgr",
+        "//sw/device/silicon_creator/lib/drivers:usb",
+        "//sw/device/silicon_creator/lib/drivers:spi_device",
+    ],
+)

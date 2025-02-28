@@ -3,17 +3,31 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::{bail, Result};
-use std::cell::{Cell, Ref, RefCell, RefMut};
-use std::time::Duration;
+use std::cell::{Cell, RefCell};
+use std::time::{Duration, Instant};
+use std::rc::Rc;
 use zerocopy::AsBytes;
 
 use crate::app::TransportWrapper;
 use crate::rescue::dfu::*;
 use crate::rescue::{Rescue, RescueError, RescueMode, RescueParams};
-use crate::util::usb::UsbBackend;
+use crate::io::spi::{Target};
+use crate::spiflash::SpiFlash;
+use crate::chip::rom_error::RomError;
 
-pub struct UsbDfu {
-    usb: RefCell<Option<UsbBackend>>,
+#[repr(C)]
+#[derive(Default, Debug, AsBytes)]
+struct SetupData {
+    request_type: u8,
+    request: u8,
+    value: u16,
+    index: u16,
+    length: u16,
+}
+
+pub struct SpiDfu {
+    spi: Rc<dyn Target>,
+    flash: RefCell<SpiFlash>,
     interface: Cell<u8>,
     wait: Cell<bool>,
     params: RescueParams,
@@ -21,13 +35,12 @@ pub struct UsbDfu {
     enter_delay: Duration,
 }
 
-impl UsbDfu {
-    const CLASS: u8 = 254;
-    const SUBCLASS: u8 = 1;
-    const PROTOCOL: u8 = 2;
-    pub fn new(params: RescueParams) -> Self {
-        UsbDfu {
-            usb: RefCell::new(None),
+impl SpiDfu {
+    const MAILBOX: u32 = 0x00FF_F000;
+    pub fn new(spi: Rc<dyn Target>, params: RescueParams) -> Self {
+        SpiDfu {
+            spi,
+            flash: RefCell::default(),
             interface: Cell::default(),
             wait: Cell::default(),
             params,
@@ -36,18 +49,82 @@ impl UsbDfu {
         }
     }
 
-    fn device(&self) -> Ref<'_, UsbBackend> {
-        let device = self.usb.borrow();
-        Ref::map(device, |d| d.as_ref().expect("device handle"))
+    fn wait_for_device(spi: &dyn Target, timeout: Duration) -> Result<SpiFlash> {
+        let deadline = Instant::now() + timeout;
+        loop {
+            match SpiFlash::from_spi(spi) {
+                Ok(flash) => return Ok(flash),
+                Err(e) => {
+                    if Instant::now() < deadline {
+                        std::thread::sleep(Duration::from_millis(100));
+                    } else {
+                        return Err(e);
+                    }
+                }
+            }
+        }
     }
 
-    fn device_mut(&self) -> RefMut<'_, UsbBackend> {
-        let device = self.usb.borrow_mut();
-        RefMut::map(device, |d| d.as_mut().expect("device handle"))
+
+    fn write_control(
+        &self,
+        request_type: u8,
+        request: u8,
+        value: u16,
+        index: u16,
+        data: &[u8],
+    ) -> Result<usize> {
+        let setup = SetupData {
+            request_type,
+            request,
+            value,
+            index,
+            length: data.len().try_into()?,
+        };
+        let flash = self.flash.borrow();
+        log::info!("write_control: {setup:x?}");
+        flash.program(&*self.spi, Self::MAILBOX, setup.as_bytes())?;
+
+        let mut result = [0u8; 4];
+        flash.read(&*self.spi, Self::MAILBOX, &mut result)?;
+        log::info!("write_control result: {result:x?}");
+        let _ = Result::<(), RomError>::from(RomError(u32::from_le_bytes(result)))?;
+
+        flash.program(&*self.spi, 0, data)?;
+        Ok(data.len())
     }
+
+    fn read_control(
+        &self,
+        request_type: u8,
+        request: u8,
+        value: u16,
+        index: u16,
+        data: &mut [u8],
+    ) -> Result<usize> {
+        let setup = SetupData {
+            request_type,
+            request,
+            value,
+            index,
+            length: data.len().try_into()?,
+        };
+        let flash = self.flash.borrow();
+        log::info!("read_control: {setup:x?}");
+        flash.program(&*self.spi, Self::MAILBOX, setup.as_bytes())?;
+
+        let mut result = [0u8; 4];
+        flash.read(&*self.spi, Self::MAILBOX, &mut result)?;
+        log::info!("read_control result: {result:x?}");
+        let _ = Result::<(), RomError>::from(RomError(u32::from_le_bytes(result)))?;
+
+        flash.read(&*self.spi, 0, data)?;
+        Ok(data.len())
+    }
+
 }
 
-impl Rescue for UsbDfu {
+impl Rescue for SpiDfu {
     fn enter(&self, transport: &TransportWrapper, reset_target: bool) -> Result<()> {
         log::info!(
             "Setting {:?}({}) to trigger rescue mode.",
@@ -59,31 +136,13 @@ impl Rescue for UsbDfu {
             transport.reset_target(self.reset_delay, /*clear_uart=*/ false)?;
             std::thread::sleep(Duration::from_millis(100));
         }
-        let device = UsbBackend::from_interface_with_timeout(
-            Self::CLASS,
-            Self::SUBCLASS,
-            Self::PROTOCOL,
-            self.params.usb_serial.as_deref(),
-            self.enter_delay,
-        );
+
+        let flash = Self::wait_for_device(&*self.spi, self.enter_delay);
         log::info!("Rescue triggered; clearing trigger condition.");
         self.params.set_trigger(transport, false)?;
-        let mut device = device?;
-
-        let config = device.active_config_descriptor()?;
-        for intf in config.interfaces() {
-            for desc in intf.descriptors() {
-                if desc.class_code() == 0xFE
-                    && desc.sub_class_code() == 1
-                    && desc.protocol_code() == 2
-                {
-                    device.claim_interface(intf.number())?;
-                    self.interface.set(intf.number());
-                    break;
-                }
-            }
-        }
-        self.usb.replace(Some(device));
+        let mut flash = flash?;
+        flash.set_address_mode_auto(&*self.spi)?;
+        self.flash.replace(flash);
         Ok(())
     }
 
@@ -91,22 +150,28 @@ impl Rescue for UsbDfu {
         let setting = match mode {
             // FIXME: the RescueMode to AltSetting values either need to be permanently fixed, or
             // the alt interfaces need to describe themselves via a string descriptor.
-            RescueMode::Rescue => 0,
-            RescueMode::RescueB => 1,
-            RescueMode::DeviceId => 2,
-            RescueMode::BootLog => 3,
-            RescueMode::BootSvcReq => 4,
-            RescueMode::BootSvcRsp => 4,
-            RescueMode::OwnerBlock => 5,
-            RescueMode::GetOwnerPage0 => 5,
+            RescueMode::Rescue => RescueMode::Rescue,
+            RescueMode::RescueB => RescueMode::RescueB,
+            RescueMode::DeviceId => RescueMode::DeviceId,
+            RescueMode::BootLog => RescueMode::BootLog,
+            RescueMode::BootSvcReq => RescueMode::BootSvcRsp,
+            RescueMode::BootSvcRsp => RescueMode::BootSvcRsp,
+            RescueMode::OwnerBlock => RescueMode::GetOwnerPage0,
+            RescueMode::GetOwnerPage0 => RescueMode::GetOwnerPage0,
             _ => bail!(RescueError::BadMode(format!(
                 "mode {mode:?} not supported by DFU"
             ))),
         };
 
-        let mut device = self.device_mut();
         log::info!("Mode {mode} is AltSetting {setting}");
-        device.set_alternate_setting(self.interface.get(), setting)?;
+        let setting = u32::from(setting);
+        self.write_control(
+            0x40,
+            0x0b,
+            (setting >> 16) as u16,
+            setting as u16,
+            &[],
+        )?;
         Ok(())
     }
 
@@ -121,18 +186,18 @@ impl Rescue for UsbDfu {
     }
 
     fn reboot(&self) -> Result<()> {
-        let usb = self.device();
-        match usb.reset() {
-            Ok(_) => {}
-            Err(e) => log::warn!("USB reset: {e}"),
-        }
+        log::info!("Reboot");
+        SpiFlash::chip_reset(&*self.spi)?;
         Ok(())
     }
 
     fn send(&self, data: &[u8]) -> Result<()> {
+        log::info!("Send");
         for chunk in data.chunks(2048) {
+            log::info!("download");
             let _ = self.download(chunk)?;
             let status = loop {
+                log::info!("get_status");
                 let status = self.get_status()?;
                 match status.state() {
                     DfuState::DnLoadIdle | DfuState::Error => {
@@ -157,6 +222,7 @@ impl Rescue for UsbDfu {
     }
 
     fn recv(&self) -> Result<Vec<u8>> {
+        log::info!("Recv");
         let mut data = vec![0u8; 2048];
         /*
          * FIXME: what am I supposed to do here?
@@ -177,10 +243,9 @@ impl Rescue for UsbDfu {
     }
 }
 
-impl DfuOperations for UsbDfu {
+impl DfuOperations for SpiDfu {
     fn download(&self, data: &[u8]) -> Result<usize> {
-        let usb = self.device();
-        usb.write_control(
+        self.write_control(
             DfuRequestType::Out.into(),
             DfuRequest::DnLoad.into(),
             /*wValue=*/ 0,
@@ -190,8 +255,7 @@ impl DfuOperations for UsbDfu {
     }
 
     fn upload(&self, data: &mut [u8]) -> Result<usize> {
-        let usb = self.device();
-        usb.read_control(
+        self.read_control(
             DfuRequestType::In.into(),
             DfuRequest::UpLoad.into(),
             /*wValue=*/ 0,
@@ -202,8 +266,7 @@ impl DfuOperations for UsbDfu {
 
     fn get_state(&self) -> Result<DfuState> {
         let mut buffer = [0u8];
-        let usb = self.device();
-        usb.read_control(
+        self.read_control(
             DfuRequestType::In.into(),
             DfuRequest::GetState.into(),
             /*wValue=*/ 0,
@@ -215,8 +278,7 @@ impl DfuOperations for UsbDfu {
 
     fn get_status(&self) -> Result<DfuStatus> {
         let mut status = DfuStatus::default();
-        let usb = self.device();
-        usb.read_control(
+        self.read_control(
             DfuRequestType::In.into(),
             DfuRequest::GetStatus.into(),
             /*wValue=*/ 0,
@@ -227,8 +289,7 @@ impl DfuOperations for UsbDfu {
     }
 
     fn clear_status(&self) -> Result<()> {
-        let usb = self.device();
-        let _ = usb.write_control(
+        self.write_control(
             DfuRequestType::Out.into(),
             DfuRequest::ClrStatus.into(),
             /*wValue=*/ 0,
@@ -239,8 +300,7 @@ impl DfuOperations for UsbDfu {
     }
 
     fn abort(&self) -> Result<()> {
-        let usb = self.device();
-        let _ = usb.write_control(
+        self.write_control(
             DfuRequestType::Out.into(),
             DfuRequest::ClrStatus.into(),
             /*wValue=*/ 0,

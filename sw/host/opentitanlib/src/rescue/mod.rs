@@ -12,16 +12,19 @@ use crate::chip::boot_svc::{BootSlot, BootSvc, OwnershipActivateRequest, Ownersh
 use crate::chip::device_id::DeviceId;
 use crate::io::gpio::PinMode;
 use crate::io::uart::UartParams;
+use crate::io::spi::SpiParams;
 use crate::util::parse_int::ParseInt;
 use crate::with_unknown;
 
 pub mod dfu;
 pub mod serial;
 pub mod usbdfu;
+pub mod spidfu;
 pub mod xmodem;
 
 pub use serial::RescueSerial;
 pub use usbdfu::UsbDfu;
+pub use spidfu::SpiDfu;
 
 #[derive(Debug, Error)]
 pub enum RescueError {
@@ -56,6 +59,8 @@ pub struct RescueParams {
     pub trigger: RescueTrigger,
     #[arg(short, long, default_value = "")]
     pub value: String,
+    #[command(flatten)]
+    spi: SpiParams,
     #[command(flatten)]
     uart: UartParams,
     #[arg(long)]
@@ -112,8 +117,19 @@ impl RescueParams {
         Ok(Box::new(UsbDfu::new(self.clone())))
     }
 
-    fn create_spidfu(&self, _transport: &TransportWrapper) -> Result<Box<dyn Rescue>> {
-        unimplemented!()
+    fn create_spidfu(&self, transport: &TransportWrapper) -> Result<Box<dyn Rescue>> {
+        ensure!(
+            self.trigger != RescueTrigger::SerialBreak,
+            RescueError::Configuration(format!(
+                "Usb-DFU does not support trigger {:?}",
+                self.trigger
+            ))
+        );
+        ensure!(
+            !self.value.is_empty(),
+            RescueError::Configuration("Usb-DFU requires a trigger value".into())
+        );
+        Ok(Box::new(SpiDfu::new(self.spi.create(transport, "BOOTSTRAP")?, self.clone())))
     }
 
     fn set_strap(&self, transport: &TransportWrapper, trigger: bool) -> Result<()> {

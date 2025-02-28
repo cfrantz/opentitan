@@ -82,6 +82,7 @@ typedef struct dfu_ctx {
   usb_control_ctx_t ep0;
   rescue_state_t state;
   boot_data_t *bootdata;
+  uint32_t expected_len;
   uint8_t status[6];
   uint8_t dfu_state;
   uint8_t dfu_error;
@@ -96,7 +97,7 @@ typedef struct dfu_ctx {
  * @param len The length of the buffer.
  * @param flags The direction or other attributes assocated with the transfer.
  */
-void dfu_transport_data(size_t ep, void *data, size_t len,
+void dfu_transport_data(dfu_ctx_t *ctx, void *data, size_t len,
                         usb_transfer_flags_t flags);
 
 /**
@@ -109,7 +110,7 @@ void dfu_transport_data(size_t ep, void *data, size_t len,
 rom_error_t dfu_transport_setupdata(usb_control_ctx_t *ctx,
                                     usb_setup_data_t *setup);
 
-void dfu_transport_result(rom_error_t result);
+void dfu_transport_result(uint32_t result);
 
 void dfu_protocol_handler(void *ctx, size_t ep, usb_transfer_flags_t flags,
                           void *data);

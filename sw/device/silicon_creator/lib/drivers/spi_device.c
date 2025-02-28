@@ -464,6 +464,7 @@ typedef struct cmd_info {
    * area if a larger payload is received.
    */
   bool handled_in_sw;
+  bool data_to_host;
 } cmd_info_t;
 
 /**
@@ -491,6 +492,7 @@ static void cmd_info_set(cmd_info_t cmd_info) {
   reg = bitfield_bit32_write(reg, SPI_DEVICE_CMD_INFO_0_BUSY_0_BIT,
                              cmd_info.handled_in_sw);
   reg = bitfield_bit32_write(reg, SPI_DEVICE_CMD_INFO_0_VALID_0_BIT, true);
+  reg = bitfield_bit32_write(reg, SPI_DEVICE_CMD_INFO_0_PAYLOAD_DIR_0_BIT, cmd_info.data_to_host);
   abs_mmio_write32(kBase + cmd_info.reg_offset, reg);
 }
 
@@ -668,9 +670,47 @@ uint32_t spi_device_flash_status_get(void) {
   return abs_mmio_read32(kBase + SPI_DEVICE_FLASH_STATUS_REG_OFFSET);
 }
 
+uint32_t spi_device_control(void) {
+  return abs_mmio_read32(kBase + SPI_DEVICE_CFG_REG_OFFSET);
+}
+
 void spi_device_enable_mailbox(uint32_t address) {
   abs_mmio_write32(kBase + SPI_DEVICE_MAILBOX_ADDR_REG_OFFSET, address);
   uint32_t cfg_reg = abs_mmio_read32(kBase + SPI_DEVICE_CFG_REG_OFFSET);
   cfg_reg = bitfield_bit32_write(cfg_reg, SPI_DEVICE_CFG_MAILBOX_EN_BIT, 1);
   abs_mmio_write32(kBase + SPI_DEVICE_CFG_REG_OFFSET, cfg_reg);
+
+  //abs_mmio_write32(kBase + SPI_DEVICE_CONTROL_REG_OFFSET, 0x20);
+
+  abs_mmio_write32(kBase + SPI_DEVICE_INTERCEPT_EN_REG_OFFSET, 0xF);
+  // Configure the READ command (CMD_INFO_5).
+  cmd_info_set((cmd_info_t){
+      .reg_offset = SPI_DEVICE_CMD_INFO_5_REG_OFFSET,
+      .op_code = kSpiDeviceOpcodeRead,
+      .address = true,
+      .dummy_cycles = 0,
+      .handled_in_sw = false,
+      .data_to_host = true,
+  });
+}
+
+void spi_device_copy_to_egress(uint32_t egress_offset, const void *data, size_t len) {
+  const uint32_t *src = (const uint32_t*)data;
+  volatile uint32_t *dst = (volatile uint32_t*)(kBase + SPI_DEVICE_EGRESS_BUFFER_REG_OFFSET + egress_offset);
+
+  while(len > sizeof(uint32_t)) {
+    *dst++ = *src++;
+    len -= sizeof(uint32_t);
+  }
+  if (len > 0) {
+    uint32_t val = 0;
+    uint32_t shift = 0;
+    const char *s = (const char*)src;
+    while(len > 0) {
+      val |= (uint32_t)*s++ << shift;
+      shift += 8;
+      len -= 1;
+    }
+    *dst = val;
+  }
 }

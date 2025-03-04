@@ -2,20 +2,8 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-#ifndef OPENTITAN_SW_DEVICE_SILICON_CREATOR_LIB_OWNERSHIP_TESTDATA_BASIC_OWNER_TESTDATA_H_
-#define OPENTITAN_SW_DEVICE_SILICON_CREATOR_LIB_OWNERSHIP_TESTDATA_BASIC_OWNER_TESTDATA_H_
-// This file was created by transforming the basic_owner.json5 file into binary
-// form and then using the `bin2c.sh` script to convert to the char-array
-// below.
-//
-// $ opentitantool ownership config --input basic_owner.json5 basic_owner.bin
-// $ util/sh/scripts/bin2c.sh --input basic_owner.bin --output basic_owner.inc
-//
-// The other `basic_owner_*.inc` files are copies of this one that have been
-// modified.  The modifications introduce errors to test the parser.
-
 // clang-format off
-const unsigned char basic_owner[] = {
+const unsigned char basic_owner_bin[] = {
 0x4f,0x57,0x4e,0x52,0x00,0x08,0x00,0x00,0x00,0x00,0x00,0x00,0x4c,0x4e,0x45,0x58, // 00000000  OWNR........LNEX
 0x50,0x32,0x35,0x36,0x4f,0x50,0x45,0x4e,0xff,0xff,0xff,0xff,0x00,0x00,0x00,0x00, // 00000010  P256OPEN........
 0x7e,0x7e,0x7e,0x7e,0x7e,0x7e,0x7e,0x7e,0x7e,0x7e,0x7e,0x7e,0x7e,0x7e,0x7e,0x7e, // 00000020  ~~~~~~~~~~~~~~~~
@@ -146,4 +134,3 @@ const unsigned char basic_owner[] = {
 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, // 000007f0  ................
 };
 // clang-format on
-#endif  // OPENTITAN_SW_DEVICE_SILICON_CREATOR_LIB_OWNERSHIP_TESTDATA_BASIC_OWNER_TESTDATA_H_

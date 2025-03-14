@@ -10,6 +10,7 @@ use crate::app::TransportWrapper;
 use crate::rescue::dfu::*;
 use crate::rescue::{Rescue, RescueError, RescueMode, RescueParams};
 use crate::util::usb::UsbBackend;
+use crate::util::hexdump::hexdump_string;
 
 pub struct UsbDfu {
     usb: RefCell<Option<UsbBackend>>,
@@ -49,7 +50,10 @@ impl Rescue for UsbDfu {
             self.params.value
         );
         self.params.set_trigger(transport, true)?;
-        if reset_target {
+
+        // If we don't have a device handle, we need a reset to cause the ROM_EXT to notice the
+        // trigger and enable the USB stack.
+        if self.usb.borrow().is_none() || reset_target {
             transport.reset_target(self.reset_delay, /*clear_uart=*/ false)?;
             std::thread::sleep(Duration::from_millis(100));
         }
@@ -115,11 +119,15 @@ impl Rescue for UsbDfu {
     }
 
     fn reboot(&self) -> Result<()> {
+        {
         let usb = self.device();
         match usb.reset() {
             Ok(_) => {}
             Err(e) => log::warn!("USB reset: {e}"),
         }
+        }
+        // After a reset, the device handle is useless and should be discarded.
+        let _ = self.usb.borrow_mut().take();
         Ok(())
     }
 
@@ -171,6 +179,7 @@ impl Rescue for UsbDfu {
         }
         */
         self.upload(&mut data)?;
+        log::info!("Upload result:\n{}", hexdump_string(&data)?);
         Ok(data)
     }
 }

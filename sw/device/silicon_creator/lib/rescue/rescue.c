@@ -285,11 +285,14 @@ hardened_bool_t rescue_detect_entry(const owner_rescue_config_t *config) {
   rescue_detect_t detect = kRescueDetectBreak;
   uint32_t index = 0;
   uint32_t gpio_val = 0;
+  uint8_t protocol = 'X';
   if ((hardened_bool_t)config != kHardenedBoolFalse) {
     detect = bitfield_field32_read(config->detect, RESCUE_DETECT);
     index = bitfield_field32_read(config->detect, RESCUE_DETECT_INDEX);
     gpio_val = bitfield_bit32_read(config->gpio, RESCUE_GPIO_VALUE_BIT);
+    protocol = config->protocol;
   }
+  dbg_printf("DETECT: %p %c %d %d %d\r\n", config, protocol, detect, index, gpio_val);
   switch (detect) {
     case kRescueDetectNone:
       break;

@@ -135,7 +135,7 @@ static rom_error_t validate_mode(uint32_t setting, rescue_state_t *state,
   // response mode).  Since DFU supports upload and download operations to the
   // same target, we handle the "send" services first to stage data into the
   // rescue buffer.
-  rescue_mode_properties_t *mode = &mode_by_altsetting[setting];
+  const rescue_mode_properties_t *mode = &mode_by_altsetting[setting];
   rom_error_t error2 = kErrorOk;
   rom_error_t error = rescue_validate_mode(mode->mode, state, bootdata);
   if (error == kErrorOk && mode->upload) {

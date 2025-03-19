@@ -31,10 +31,18 @@ _CONFIGS = {
     "xmodem": {
         "rom_ext": "//sw/device/silicon_creator/rom_ext:rom_ext_dice_x509_slot_a",
         "params": "",
+        "setup": "",
     },
     "usbdfu": {
         "rom_ext": "//sw/device/silicon_creator/rom_ext:rom_ext_usbdfu",
         "params": "-p usb-dfu -t strap -v 3",
+        "setup": "",
+    },
+    "spidfu": {
+        "rom_ext": "//sw/device/silicon_creator/rom_ext:rom_ext_spidfu",
+        # Use spi-dfu, trigger with GPIO IOA2 high.
+        "params": "-p spi-dfu -t gpio -v +Ioa2",
+        "setup": "--exec=\"gpio set --mode OpenDrain Ioa2\"",
     },
 }
 
@@ -70,14 +78,16 @@ _CONFIGS = {
             binaries = {
                 ":boot_test_{}".format(name): "payload",
             },
-            slot = position["slot"],
             params = config["params"],
             rom_ext = config["rom_ext"],
+            setup = config["setup"],
+            slot = position["slot"],
             tags = ["broken"],
             test_cmd = """
                 --exec="transport init"
                 --exec="fpga clear-bitstream"
                 --exec="fpga load-bitstream {bitstream}"
+                {setup}
                 --exec="bootstrap --clear-uart=true {rom_ext}"
                 # First make sure the ROM_EXT is faulting because there is no firmware
                 --exec="console --non-interactive --exit-success='BFV:' --exit-failure='PASS|FAIL'"
@@ -105,14 +115,16 @@ _CONFIGS = {
                 ":boot_test_slot_a": "slot_a",
                 ":boot_test_slot_b": "slot_b",
             },
-            tags = ["broken"],
             params = config["params"],
             rom_ext = config["rom_ext"],
+            setup = config["setup"],
+            tags = ["broken"],
             test_cmd = """
                 --exec="transport init"
                 --exec="fpga clear-bitstream"
                 --exec="fpga load-bitstream {bitstream}"
                 --exec="bootstrap --clear-uart=true {firmware}"
+                {setup}
                 --exec="no-op --info='##### Set next slot via the rescue protocol'"
                 --exec="rescue {params} boot-svc set-next-bl0-slot --next=SlotB --get-response=false"
                 --exec="no-op --info='##### Check for firmware execution in slot B'"
@@ -141,14 +153,16 @@ _CONFIGS = {
                 ":boot_test_slot_a": "slot_a",
                 ":boot_test_slot_b": "slot_b",
             },
-            tags = ["broken"],
             params = config["params"],
             rom_ext = config["rom_ext"],
+            setup = config["setup"],
+            tags = ["broken"],
             test_cmd = """
                 --exec="transport init"
                 --exec="fpga clear-bitstream"
                 --exec="fpga load-bitstream {bitstream}"
                 --exec="bootstrap --clear-uart=true {firmware}"
+                {setup}
                 --exec="no-op --info='##### Set primary slot via the rescue protocol'"
                 --exec="rescue {params} boot-svc set-next-bl0-slot --primary=SlotB"
                 --exec="no-op --info='##### Check for firmware execution in slot B'"

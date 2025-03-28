@@ -16,12 +16,18 @@ load(
     "//rules/opentitan:defs.bzl",
     "DEFAULT_TEST_FAILURE_MSG",
     "DEFAULT_TEST_SUCCESS_MSG",
+    "EARLGREY_SILICON_OWNER_ROM_EXT_ENVS",
     "fpga_params",
     "opentitan_test",
+    "opentitan_binary",
 )
 load(
     "//sw/device/silicon_creator/rom_ext/imm_section:defs.bzl",
     "IMMUTABLE_HASH_UNENFORCED_MSG",
+)
+load(
+    "@bazel_skylib//lib:dicts.bzl",
+    "dicts",
 )
 
 package(default_visibility = ["//visibility:public"])
@@ -133,6 +139,22 @@ _POSITIONS = {
     },
 }
 
+opentitan_binary(
+    name = "boot_binary",
+    testonly = True,
+    srcs = [":boot_test"],
+    exec_env = [
+        "@provisioning_exts//shared/exec_env:silicon_owner_gb_rom_ext",
+    ],
+    linker_script = "//sw/device/lib/testing/test_framework:ottf_ld_silicon_owner_slot_virtual",
+    deps = [
+        "//sw/device/lib/base:status",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+        "//sw/device/silicon_creator/lib:boot_log",
+        "//sw/device/silicon_creator/lib/drivers:retention_sram",
+    ],
+)
+
 [
     opentitan_test(
         name = "position_{}".format(name),
@@ -159,6 +181,7 @@ _POSITIONS = {
             "//sw/device/silicon_creator/lib:boot_log",
             "//sw/device/silicon_creator/lib/drivers:retention_sram",
         ],
+
     )
     for name, position in _POSITIONS.items()
 ]

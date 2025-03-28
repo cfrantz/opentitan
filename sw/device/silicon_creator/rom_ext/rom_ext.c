@@ -700,11 +700,21 @@ static rom_error_t rom_ext_start(boot_data_t *boot_data, boot_log_t *boot_log) {
   return error;
 }
 
+void dump_otp(uintptr_t base, size_t len) {
+  const uint32_t *p = (const uint32_t*)base;
+  dbg_printf("Dumping %u words starting at %p\r\n", len, p);
+  for(size_t i=0; i < len; i++, p++) {
+    dbg_printf("%x: %x\r\n", i, *p);
+  }
+}
+
 void rom_ext_main(void) {
   rom_ext_check_rom_expectations();
   boot_data_t boot_data;
   boot_log_t *boot_log = &retention_sram_get()->creator.boot_log;
 
+  dump_otp(TOP_EARLGREY_OTP_CTRL_CORE_BASE_ADDR+OTP_CTRL_SW_CFG_WINDOW_REG_OFFSET,
+            OTP_CTRL_PARAM_HW_CFG0_OFFSET / 4);
   rom_error_t error = rom_ext_start(&boot_data, boot_log);
   if (error == kErrorWriteBootdataThenReboot) {
     HARDENED_CHECK_EQ(error, kErrorWriteBootdataThenReboot);

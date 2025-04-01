@@ -407,6 +407,8 @@ static rom_error_t rom_ext_boot(boot_data_t *boot_data, boot_log_t *boot_log,
   // Lock the flash according to the ownership configuration.
   HARDENED_RETURN_IF_ERROR(
       ownership_flash_lockdown(boot_data, boot_log, &owner_config));
+  // Lock the ownership info pages.
+  ownership_pages_lockdown(boot_data, /*rescue=*/kHardenedBoolFalse);
 
   // Verify expectations before jumping to owner code.
   // TODO: we really want to call rnd_uint32 here to select a random starting
@@ -717,13 +719,37 @@ static rom_error_t rom_ext_start(boot_data_t *boot_data, boot_log_t *boot_log) {
   boot_log->bl0_min_sec_ver = boot_data->min_security_version_bl0;
   boot_log_digest_update(boot_log);
 
-  if (rescue_detect_entry(owner_config.rescue) == kHardenedBoolTrue) {
-    ownership_pages_lockdown(boot_data, /*rescue=*/kHardenedBoolTrue);
-    error = rescue_protocol(boot_data, boot_log, owner_config.rescue);
-  } else {
-    ownership_pages_lockdown(boot_data, /*rescue=*/kHardenedBoolFalse);
+  hardened_bool_t want_rescue = rescue_detect_entry(owner_config.rescue);
+  hardened_bool_t boot_attempted = kHardenedBoolFalse;
+
+  if (want_rescue == kHardenedBoolFalse) {
+    // If rescue wasn't triggered, try booting the next stage.
     error = rom_ext_try_next_stage(boot_data, boot_log);
+    boot_attempted = kHardenedBoolTrue;
   }
+
+  // If we haven't already entered rescue and rescue is requested (either by
+  // the rescue trigger or by a boot failure), then enter rescue.
+  if (want_rescue == kHardenedBoolTrue ||
+      rescue_enter_on_fail(owner_config.rescue) == kHardenedBoolTrue) {
+    // Lock down the ownership INFO pages for rescue.
+    ownership_pages_lockdown(boot_data, /*rescue=*/kHardenedBoolTrue);
+    if (error != kErrorOk) {
+      dbg_printf("BFV:%x\r\n", error);
+    }
+
+    error = rescue_protocol(boot_data, boot_log, owner_config.rescue);
+
+    // If rescue timed out and we didn't attempt to boot, request skipping
+    // rescue on the next boot.  This will permit booting owner code if
+    // the rescue trigger is stuck for some reason.
+    if (error == kErrorRescueInactivity &&
+        boot_attempted == kHardenedBoolFalse) {
+      rescue_skip_next_boot();
+      rstmgr_reset();
+    }
+  }
+
   return error;
 }
 

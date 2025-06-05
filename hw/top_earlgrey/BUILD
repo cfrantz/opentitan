@@ -22,6 +22,7 @@ load(
     "sim_dv",
     "sim_qemu",
     "sim_verilator",
+    "CLEAR_KEY_SET",
 )
 load("//rules/opentitan:qemu.bzl", "qemu_cfg", "qemu_flash", "qemu_otp")
 
@@ -451,6 +452,12 @@ silicon(
         # We choose key zero in the keyset, which should be `*-earlgrey-a1-root-ecdsa-prod-0`.
         "//conditions:default": {"//signing:appkey": "0"},
     }),
+    spx_key = select({
+        "//signing:test_keys": CLEAR_KEY_SET,
+        # We choose key zero in the keyset, which should be `*-earlgrey-a1-root-ecdsa-prod-0`.
+        "//conditions:default": {"//signing:spxkey": "0"},
+    }),
+
     exec_env = "silicon_creator",
     extract_sw_logs = "//util/device_sw_utils:extract_sw_logs_db",
     flash_scramble_tool = "//util/design:gen-flash-img",

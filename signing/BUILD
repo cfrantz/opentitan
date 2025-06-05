@@ -18,6 +18,10 @@ label_flag(
     name = "appkey",
     build_setting_default = "//sw/device/silicon_creator/rom_ext/sival/keys:keyset",
 )
+label_flag(
+    name = "spxkey",
+    build_setting_default = "//sw/device/silicon_creator/rom_ext/sival/keys:keyset",
+)
 
 config_setting(
     name = "test_keys",

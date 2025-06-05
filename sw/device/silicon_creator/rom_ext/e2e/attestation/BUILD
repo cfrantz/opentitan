@@ -29,6 +29,7 @@ opentitan_binary(
         "//sw/device/lib/testing/test_framework:ottf_main",
         "//sw/device/silicon_creator/lib/drivers:flash_ctrl",
         "//sw/device/silicon_creator/manuf/base:perso_tlv_data",
+        "//hw/top_earlgrey/ip_autogen/flash_ctrl:flash_ctrl_c_regs",
     ],
 )
 
@@ -46,4 +47,26 @@ opentitan_test(
         """,
         test_harness = "//sw/host/tests/attestation:attestation_test",
     ),
+)
+
+opentitan_test(
+    name = "print_raw_cert_data",
+    srcs = ["print_certs.c"],
+    defines = [
+        "PARSE_CERTS=false",
+    ],
+    exec_env = {
+        "//hw/top_earlgrey:fpga_hyper310_rom_ext": None,
+        "//hw/top_earlgrey:fpga_cw310_rom_with_fake_keys": None,
+        "//hw/top_earlgrey:silicon_creator": None,
+    },
+    deps = [
+        "//sw/device/lib/base:status",
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/runtime:print",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+        "//sw/device/silicon_creator/lib/drivers:flash_ctrl",
+        "//sw/device/silicon_creator/manuf/base:perso_tlv_data",
+        "//hw/top_earlgrey/ip_autogen/flash_ctrl:flash_ctrl_c_regs",
+    ],
 )

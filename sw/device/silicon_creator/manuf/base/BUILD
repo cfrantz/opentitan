@@ -266,6 +266,14 @@ cc_library(
     ],
 )
 
+cc_binary(
+    name = "perso_tlv_print",
+    srcs = ["perso_tlv_print.c"],
+    deps = [
+        ":perso_tlv_data",
+    ],
+)
+
 # Need a separate library for the headers, because adding a dependency on
 #//sw/device/silicon_creator/lib/cert required by perso_tlv_data above causes
 # bindgen failures due to otbn (which is a cert dependency) requiring risc32

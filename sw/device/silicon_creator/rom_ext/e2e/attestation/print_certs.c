@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+#include "sw/device/lib/base/abs_mmio.h"
 #include "sw/device/lib/base/status.h"
 #include "sw/device/lib/runtime/log.h"
 #include "sw/device/lib/runtime/print.h"
@@ -9,7 +10,13 @@
 #include "sw/device/silicon_creator/lib/drivers/flash_ctrl.h"
 #include "sw/device/silicon_creator/manuf/base/perso_tlv_data.h"
 
+#include "flash_ctrl_regs.h"
+
 OTTF_DEFINE_TEST_CONFIG();
+
+#ifndef PARSE_CERTS
+#define PARSE_CERTS true
+#endif
 
 const char kBase64[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -29,11 +36,34 @@ static void base64_encode(char *dest, const uint8_t *data, int32_t len) {
   *dest = '\0';
 }
 
+static void configure_flash_page( const flash_ctrl_info_page_t *info_page) {
+  uint32_t reg = abs_mmio_read32(info_page->cfg_addr);
+
+  reg = bitfield_field32_write(
+      reg, FLASH_CTRL_BANK0_INFO0_PAGE_CFG_0_EN_0_FIELD, kMultiBitBool4True);
+  reg = bitfield_field32_write(
+      reg, FLASH_CTRL_BANK0_INFO0_PAGE_CFG_0_RD_EN_0_FIELD, kMultiBitBool4True);
+  reg = bitfield_field32_write(reg, FLASH_CTRL_DEFAULT_REGION_SCRAMBLE_EN_FIELD,
+                               kMultiBitBool4True);
+  reg = bitfield_field32_write(reg, FLASH_CTRL_DEFAULT_REGION_ECC_EN_FIELD,
+                               kMultiBitBool4True);
+  abs_mmio_write32(info_page->cfg_addr, reg);
+}
+
 static status_t print_cert(char *dest,
-                           const flash_ctrl_info_page_t *info_page) {
+                           const flash_ctrl_info_page_t *info_page,
+                           const char *name,
+                           bool parse_certs) {
   uint8_t data[2048];
+  configure_flash_page(info_page);
   TRY(flash_ctrl_info_read(info_page, 0, sizeof(data) / sizeof(uint32_t),
                            data));
+
+  if (!parse_certs) {
+    base64_encode(dest, data, sizeof(data));
+    LOG_INFO("Raw %s data: %s", name, dest);
+    return OK_STATUS();
+  }
 
   uint32_t offset = 0;
   size_t len = sizeof(data);
@@ -55,6 +85,7 @@ static status_t print_cert(char *dest,
 static status_t print_owner_block(char *dest,
                                   const flash_ctrl_info_page_t *info_page) {
   uint8_t data[2048];
+  configure_flash_page(info_page);
   TRY(flash_ctrl_info_read(info_page, 0, sizeof(data) / sizeof(uint32_t),
                            data));
   base64_encode(dest, data, sizeof(data));
@@ -70,9 +101,9 @@ static status_t print_certs(void) {
   // trigger an ECC error when trying to read a page that has scrambling setup
   // by the ROM_EXT but is not erased after.
   if (kDeviceType == kDeviceSilicon) {
-    TRY(print_cert(buf, &kFlashCtrlInfoPageFactoryCerts));
+    TRY(print_cert(buf, &kFlashCtrlInfoPageFactoryCerts, "UDS", PARSE_CERTS));
   }
-  TRY(print_cert(buf, &kFlashCtrlInfoPageDiceCerts));
+  TRY(print_cert(buf, &kFlashCtrlInfoPageDiceCerts, "CDI", PARSE_CERTS));
 
   // Print owner information.
   TRY(print_owner_block(buf, &kFlashCtrlInfoPageOwnerSlot0));

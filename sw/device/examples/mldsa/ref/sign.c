@@ -9,8 +9,8 @@
 #include "symmetric.h"
 #include "fips202.h"
 
-extern void check_nested(int); 
-void check_nested(int) {} 
+extern void check_nested(int);
+void check_nested(int line) {}
 extern void dbg_printf(const char *, ...);
 
 /*************************************************

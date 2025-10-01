@@ -1,14 +1,9 @@
 #include "sw/device/silicon_creator/lib/dbg_print.h"
 #include "sw/device/silicon_creator/lib/drivers/ibex.h"
+#include "sw/device/silicon_creator/lib/stack_utilization.h"
 
 #include "sw/device/examples/mldsa/ref/api.h"
-
-
-static inline uint32_t depth(void) {
-  uint32_t sp;
-  sp = (uint32_t)&sp;
-  return sp;
-}
+#include "sw/device/examples/mldsa/ref/config.h"
 
 
 const char kBase64[] =
@@ -36,11 +31,11 @@ static void base64_encode(const uint8_t *data, int32_t len) {
  *
  * Totals:
  */
-uint8_t sk[pqcrystals_ml_dsa_87_SECRETKEYBYTES];
-uint8_t pk[pqcrystals_ml_dsa_87_PUBLICKEYBYTES];
+uint8_t sk[DILITHIUM_NAMESPACE(SECRETKEYBYTES)];
+uint8_t pk[DILITHIUM_NAMESPACE(PUBLICKEYBYTES)];
 void keygen(void) {
   uint32_t start = ibex_mcycle32();
-  int result = pqcrystals_ml_dsa_87_ref_keypair(pk, sk);
+  int result = DILITHIUM_NAMESPACE(keypair(pk, sk));
   uint32_t end = ibex_mcycle32();
   dbg_printf("Keygen result: %d in %u cycles\n", result, end-start);
   if (result == 0) {
@@ -52,6 +47,9 @@ void keygen(void) {
 }
 
 void bare_metal_main(void) {
+  extern uint32_t _bss_end[];
+  dbg_printf("dilithium_mode = %d\r\n", DILITHIUM_MODE);
   keygen();
-  while(true) ;
+  _stack_utilization_print(_bss_end);
+  dbg_printf("PASS!\r\n");
 }

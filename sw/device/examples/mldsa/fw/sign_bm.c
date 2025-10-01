@@ -1,18 +1,13 @@
 #include "sw/device/silicon_creator/lib/dbg_print.h"
 #include "sw/device/silicon_creator/lib/drivers/ibex.h"
+#include "sw/device/silicon_creator/lib/stack_utilization.h"
 
 #include "sw/device/examples/mldsa/ref/api.h"
+#include "sw/device/examples/mldsa/ref/config.h"
 
-#include "sw/device/examples/mldsa/data/foo_sk.h"
-#include "sw/device/examples/mldsa/data/message.h"
-#include "sw/device/examples/mldsa/data/signature.h"
-
-
-static inline uint32_t depth(void) {
-  uint32_t sp;
-  sp = (uint32_t)&sp;
-  return sp;
-}
+#include "sw/device/examples/mldsa/data/mldsa87/foo_sk.h"
+#include "sw/device/examples/mldsa/data/mldsa87/message.h"
+#include "sw/device/examples/mldsa/data/mldsa87/signature.h"
 
 
 const char kBase64[] =
@@ -50,25 +45,30 @@ static void base64_encode(const uint8_t *data, int32_t len) {
  *   6284 bytes (.text) + 1024 bytes (.rodata)
  */
 
-uint8_t sig[pqcrystals_ml_dsa_87_BYTES];
-void sign_test(void) {
+uint8_t sig[DILITHIUM_NAMESPACE(BYTES)];
+int sign_test(void) {
   size_t siglen = sizeof(sig);
 
-  dbg_printf("depth = %x\r\n", depth());
-
   uint32_t start = ibex_mcycle32();
-  int result = pqcrystals_ml_dsa_87_ref_signature(
+  int result = DILITHIUM_NAMESPACE(signature(
       sig, &siglen,
       message_txt, sizeof(message_txt),
       (const uint8_t*)"", 0,
-      foo_sk);
+      foo_sk));
   uint32_t end = ibex_mcycle32();
   dbg_printf("Sign result: %d in %u cycles\n", result, end-start);
-  //dbg_hexdump(sig, sizeof(sig));
   base64_encode(sig, sizeof(sig));
+  return result;
 }
 
 void bare_metal_main(void) {
-  sign_test();
-  while(true) ;
+  extern uint32_t _bss_end[];
+  dbg_printf("dilithium_mode = %d\r\n", DILITHIUM_MODE);
+  int result = sign_test();
+  _stack_utilization_print(_bss_end);
+  if (result == 0) {
+    dbg_printf("PASS!\r\n");
+  } else {
+    dbg_printf("FAIL!\r\n");
+  }
 }

@@ -49,33 +49,29 @@ opentitan_test(
 )
 
 opentitan_test(
-    name = "verify_test",
-    srcs = [ "verify_test.c" ],
+    name = "verify_bm",
+    srcs = [
+        "verify_bm.c",
+        "//sw/device/silicon_owner/bare_metal:bare_metal_start",
+    ],
     exec_env = {
         "//hw/top_earlgrey:fpga_hyper310_rom_ext": None,
         "@provisioning_exts//shared/exec_env:silicon_owner_gb_rom_ext": None,
     },
+    linker_script = "//sw/device/silicon_owner/bare_metal:ld_slot_a",
+    manifest = "//sw/device/silicon_owner/bare_metal:manifest",
     deps = [
-        "//sw/device/examples/mldsa/data:data",
-        "//sw/device/examples/mldsa/ref:ml_dsa_87",
+        "//sw/device/examples/mldsa/data/mldsa44:data",
+        "//sw/device/examples/mldsa/data/mldsa65:data",
+        "//sw/device/examples/mldsa/data/mldsa87:data",
+        "//sw/device/examples/mldsa/ref:ml_dsa",
         "//sw/device/silicon_creator/lib:dbg_print",
-        "//sw/device/lib/testing/test_framework:ottf_main",
+        "//sw/device/lib/crt",
+        "//sw/device/silicon_creator/lib:manifest_def",
+        "//sw/device/silicon_creator/lib:stack_utilization",
     ],
-)
 
-opentitan_test(
-    name = "sign_test",
-    srcs = [ "sign_test.c" ],
-    exec_env = {
-        "//hw/top_earlgrey:fpga_hyper310_rom_ext": None,
-        "@provisioning_exts//shared/exec_env:silicon_owner_gb_rom_ext": None,
-    },
-    deps = [
-        "//sw/device/examples/mldsa/data:data",
-        "//sw/device/examples/mldsa/ref:ml_dsa_87",
-        "//sw/device/silicon_creator/lib:dbg_print",
-        "//sw/device/lib/testing/test_framework:ottf_main",
-    ],
+
 )
 
 opentitan_test(
@@ -91,12 +87,16 @@ opentitan_test(
     linker_script = "//sw/device/silicon_owner/bare_metal:ld_slot_a",
     manifest = "//sw/device/silicon_owner/bare_metal:manifest",
     deps = [
-        "//sw/device/examples/mldsa/data:data",
-        "//sw/device/examples/mldsa/ref:ml_dsa_87",
+        "//sw/device/examples/mldsa/data/mldsa44:data",
+        "//sw/device/examples/mldsa/data/mldsa65:data",
+        "//sw/device/examples/mldsa/data/mldsa87:data",
+        "//sw/device/examples/mldsa/ref:ml_dsa",
         "//sw/device/silicon_creator/lib:dbg_print",
         "//sw/device/lib/crt",
         "//sw/device/silicon_creator/lib:manifest_def",
+        "//sw/device/silicon_creator/lib:stack_utilization",
     ],
+
 )
 
 opentitan_test(
@@ -112,9 +112,10 @@ opentitan_test(
     linker_script = "//sw/device/silicon_owner/bare_metal:ld_slot_a",
     manifest = "//sw/device/silicon_owner/bare_metal:manifest",
     deps = [
-        "//sw/device/examples/mldsa/ref:ml_dsa_87",
+        "//sw/device/examples/mldsa/ref:ml_dsa",
         "//sw/device/silicon_creator/lib:dbg_print",
         "//sw/device/lib/crt",
         "//sw/device/silicon_creator/lib:manifest_def",
+        "//sw/device/silicon_creator/lib:stack_utilization",
     ],
 )

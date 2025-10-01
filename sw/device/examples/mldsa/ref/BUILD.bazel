@@ -1,9 +1,21 @@
+load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+
 package(default_visibility = ["//visibility:public"])
+
+string_flag(
+    name = "mode",
+    build_setting_default = "5",
+    values = ["2", "3", "5"],
+)
+
+config_setting(name="mode2", flag_values = {":mode": "2"})
+config_setting(name="mode3", flag_values = {":mode": "3"})
+config_setting(name="mode5", flag_values = {":mode": "5"})
 
 alias(
     name = "shake",
     actual = select({
-        "//rules:opentitan_platform": "//sw/device/examples/mldsa/fw:shake",
+        "//toolchain:on_device_config": "//sw/device/examples/mldsa/fw:shake",
         "//conditions:default": "//sw/device/examples/mldsa/ossl:sha3",
 
     }),
@@ -11,17 +23,23 @@ alias(
 alias(
     name = "rand",
     actual = select({
-        "//rules:opentitan_platform": "//sw/device/examples/mldsa/fw:rand",
+        "//toolchain:on_device_config": "//sw/device/examples/mldsa/fw:rand",
         "//conditions:default": "//sw/device/examples/mldsa/ossl:rand",
     }),
 )
 
 cc_library(
-    name = "ml_dsa_87",
+    name = "ml_dsa",
     copts = [
         "-Wno-implicit-int-conversion",
         "-Wno-sign-conversion",
     ],
+    defines = [
+    ] + select({
+        ":mode2": ["DILITHIUM_MODE=2"],
+        ":mode3": ["DILITHIUM_MODE=3"],
+        ":mode5": ["DILITHIUM_MODE=5"],
+    }),
     srcs = [
         "ntt.c",
         "ntt.h",
@@ -38,12 +56,12 @@ cc_library(
         "sign.c",
         "sign.h",
         "symmetric-shake.c",
-        "config.h",
         "params.h",
         "symmetric.h",
     ],
     hdrs = [
         "api.h",
+        "config.h",
     ],
     deps = [
         ":shake",
@@ -55,6 +73,6 @@ cc_binary(
     name = "demo",
     srcs = ["demo.c"],
     deps = [
-        ":ml_dsa_87",
+        ":ml_dsa",
     ],
 )

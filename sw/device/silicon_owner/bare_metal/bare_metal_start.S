@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "hw/top_earlgrey/sw/autogen/top_earlgrey_memory.h"
+#include "sw/device/silicon_creator/lib/stack_utilization_asm.h"
 
 /**
  * ROM_EXT Interrupt Vector
@@ -146,6 +147,20 @@ _start_boot:
    * memory at addresses below `sp`.
    */
   la   sp, _stack_end
+
+#ifdef STACK_UTILIZATION_CHECK
+  // Fill the stack with a known pattern
+  // We configure a No-Access ePMP NA4 region at stack_start as a
+  // stack guard.  We cannot access that word, so start filling
+  // after the stack guard.
+.L_stack_clear:
+  la   a0, _bss_end
+  li   a1, STACK_UTILIZATION_FREE_PATTERN
+.L_stack_clear_loop:
+  sw   a1, 0(a0)
+  addi a0, a0, 4
+  bltu a0, sp, .L_stack_clear_loop
+#endif
 
   /**
    * Set well-defined interrupt/exception handlers

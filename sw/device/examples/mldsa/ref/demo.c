@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "api.h"
+#include "config.h"
 #include "fips202.h"
 
 void savebuf(const char *basename, const char *ext, void *buf, size_t n) {
@@ -51,11 +52,11 @@ void hexdump(const void *data, size_t len) {
 }
 
 void keygen(const char *basename) {
-  uint8_t sk[pqcrystals_ml_dsa_87_SECRETKEYBYTES];
-  uint8_t pk[pqcrystals_ml_dsa_87_PUBLICKEYBYTES];
+  uint8_t sk[DILITHIUM_NAMESPACE(SECRETKEYBYTES)];
+  uint8_t pk[DILITHIUM_NAMESPACE(PUBLICKEYBYTES)];
 
 
-    if (pqcrystals_ml_dsa_87_ref_keypair(pk, sk) != 0) {
+    if (DILITHIUM_NAMESPACE(keypair)(pk, sk) != 0) {
       printf("keygen error\n");
       exit(2);
     }
@@ -64,7 +65,7 @@ void keygen(const char *basename) {
 }
 
 void sign(const char *skfile, const char *msgfile, const char *sigfile, const char *ctx) {
-  uint8_t sk[pqcrystals_ml_dsa_87_SECRETKEYBYTES];
+  uint8_t sk[DILITHIUM_NAMESPACE(SECRETKEYBYTES)];
   size_t n = loadbuf(skfile, sk, sizeof(sk));
   if (n != sizeof(sk)) {
     printf("secretkey: loaded %zu bytes but wanted %zu\n", n, sizeof(sk));
@@ -75,9 +76,9 @@ void sign(const char *skfile, const char *msgfile, const char *sigfile, const ch
   n = loadbuf(msgfile, msg, sizeof(msg));
   printf("Loaded message: %zu bytes\n", n);
 
-  uint8_t sig[pqcrystals_ml_dsa_87_BYTES];
+  uint8_t sig[DILITHIUM_NAMESPACE(BYTES)];
   size_t siglen = sizeof(sig);
-  pqcrystals_ml_dsa_87_ref_signature(sig, &siglen,
+  DILITHIUM_NAMESPACE(signature)(sig, &siglen,
                                      msg, n,
                                      (const uint8_t*)ctx, strlen(ctx),
                                      sk);
@@ -86,7 +87,7 @@ void sign(const char *skfile, const char *msgfile, const char *sigfile, const ch
 }
 
 void verify(const char *pkfile, const char *msgfile, const char *sigfile, const char *ctx) {
-  uint8_t pk[pqcrystals_ml_dsa_87_PUBLICKEYBYTES];
+  uint8_t pk[DILITHIUM_NAMESPACE(PUBLICKEYBYTES)];
   size_t n = loadbuf(pkfile, pk, sizeof(pk));
   if (n != sizeof(pk)) {
     printf("publickey: loaded %zu bytes but wanted %zu\n", n, sizeof(pk));
@@ -97,14 +98,14 @@ void verify(const char *pkfile, const char *msgfile, const char *sigfile, const 
   n = loadbuf(msgfile, msg, sizeof(msg));
   printf("Loaded message: %zu bytes\n", n);
 
-  uint8_t sig[pqcrystals_ml_dsa_87_BYTES];
+  uint8_t sig[DILITHIUM_NAMESPACE(BYTES)];
   size_t siglen = loadbuf(sigfile, sig, sizeof(sig));
   if (siglen != sizeof(sig)) {
     printf("sig: loaded %zu bytes but wanted %zu\n", siglen, sizeof(sig));
     exit(2);
   }
 
-  int result = pqcrystals_ml_dsa_87_ref_verify(sig, siglen,
+  int result = DILITHIUM_NAMESPACE(verify)(sig, siglen,
                                      msg, n,
                                      (const uint8_t*)ctx, strlen(ctx),
                                      pk);
@@ -140,7 +141,15 @@ void shake256_xof(const char *input, size_t nblocks) {
 }
 
 int usage(const char *prog) {
-  printf("%s - mldsa demo program\n\n", prog);
+  const char* variant[] = {
+      "_invalid",
+      "_invalid",
+      "44",
+      "65",
+      "_invalid",
+      "87",
+  };
+  printf("%s - mldsa%s demo program\n\n", prog, variant[DILITHIUM_MODE]);
   printf("%s keygen [basename] - generate a public and secret key\n", prog);
   printf("%s sign [secretkey] [message] [sigfile] - sign a message\n", prog);
   printf("%s verify [publickey] [message] [sigfile] - verify a message\n", prog);

@@ -6,9 +6,9 @@
 
 static int nested_init;
 
-void check_nested(int line) {
-  if (nested_init) dbg_printf("check nested init line=%d: %d\r\n", line, nested_init);
-}
+//void check_nested(int line) {
+//  if (nested_init) dbg_printf("check nested init line=%d: %d\r\n", line, nested_init);
+//}
 
 static inline void unimp(void) {
   asm volatile("unimp" : : : "memory");

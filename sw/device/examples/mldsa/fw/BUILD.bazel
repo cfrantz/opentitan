@@ -1,0 +1,120 @@
+load(
+    "@lowrisc_opentitan//rules/opentitan:defs.bzl",
+    "EARLGREY_TEST_ENVS",
+    "fpga_params",
+    "opentitan_test",
+    "qemu_params",
+    "verilator_params",
+)
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "rand",
+    srcs = [ "rand.c" ],
+    hdrs = [ "rand.h" ],
+    includes = ["."],
+    deps = [
+        "//sw/device/lib/base:abs_mmio",
+        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//sw/device/silicon_creator/lib/drivers:ibex",
+        "//hw/ip/rv_core_ibex/data:rv_core_ibex_c_regs",
+
+    ],
+)
+
+cc_library(
+    name = "shake",
+    srcs = [ "shake.c" ],
+    hdrs = [ "fips202.h" ],
+    includes = ["."],
+    deps = [
+        "//sw/device/silicon_creator/lib/drivers:kmac",
+        "//sw/device/silicon_creator/lib:dbg_print",
+        "//sw/device/silicon_creator/lib:error",
+    ],
+)
+
+opentitan_test(
+    name = "shake_test",
+    srcs = [ "shake_test.c" ],
+    exec_env = {
+        "//hw/top_earlgrey:fpga_hyper310_rom_ext": None,
+    },
+    deps = [
+        "//sw/device/silicon_creator/lib/drivers:kmac",
+        "//sw/device/silicon_creator/lib:dbg_print",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+    ],
+)
+
+opentitan_test(
+    name = "verify_test",
+    srcs = [ "verify_test.c" ],
+    exec_env = {
+        "//hw/top_earlgrey:fpga_hyper310_rom_ext": None,
+        "@provisioning_exts//shared/exec_env:silicon_owner_gb_rom_ext": None,
+    },
+    deps = [
+        "//sw/device/examples/mldsa/data:data",
+        "//sw/device/examples/mldsa/ref:ml_dsa_87",
+        "//sw/device/silicon_creator/lib:dbg_print",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+    ],
+)
+
+opentitan_test(
+    name = "sign_test",
+    srcs = [ "sign_test.c" ],
+    exec_env = {
+        "//hw/top_earlgrey:fpga_hyper310_rom_ext": None,
+        "@provisioning_exts//shared/exec_env:silicon_owner_gb_rom_ext": None,
+    },
+    deps = [
+        "//sw/device/examples/mldsa/data:data",
+        "//sw/device/examples/mldsa/ref:ml_dsa_87",
+        "//sw/device/silicon_creator/lib:dbg_print",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+    ],
+)
+
+opentitan_test(
+    name = "sign_bm",
+    srcs = [
+        "sign_bm.c",
+        "//sw/device/silicon_owner/bare_metal:bare_metal_start",
+    ],
+    exec_env = {
+        "//hw/top_earlgrey:fpga_hyper310_rom_ext": None,
+        "@provisioning_exts//shared/exec_env:silicon_owner_gb_rom_ext": None,
+    },
+    linker_script = "//sw/device/silicon_owner/bare_metal:ld_slot_a",
+    manifest = "//sw/device/silicon_owner/bare_metal:manifest",
+    deps = [
+        "//sw/device/examples/mldsa/data:data",
+        "//sw/device/examples/mldsa/ref:ml_dsa_87",
+        "//sw/device/silicon_creator/lib:dbg_print",
+        "//sw/device/lib/crt",
+        "//sw/device/silicon_creator/lib:manifest_def",
+    ],
+)
+
+opentitan_test(
+    name = "keygen_bm",
+    srcs = [
+        "keygen_bm.c",
+        "//sw/device/silicon_owner/bare_metal:bare_metal_start",
+    ],
+    exec_env = {
+        "//hw/top_earlgrey:fpga_hyper310_rom_ext": None,
+        "@provisioning_exts//shared/exec_env:silicon_owner_gb_rom_ext": None,
+    },
+    linker_script = "//sw/device/silicon_owner/bare_metal:ld_slot_a",
+    manifest = "//sw/device/silicon_owner/bare_metal:manifest",
+    deps = [
+        "//sw/device/examples/mldsa/ref:ml_dsa_87",
+        "//sw/device/silicon_creator/lib:dbg_print",
+        "//sw/device/lib/crt",
+        "//sw/device/silicon_creator/lib:manifest_def",
+    ],
+)

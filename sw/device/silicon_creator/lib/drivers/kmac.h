@@ -54,6 +54,7 @@ rom_error_t kmac_kmac256_hw_configure(void);
  */
 OT_WARN_UNUSED_RESULT
 rom_error_t kmac_shake256_configure(void);
+rom_error_t kmac_shake128_configure(void);
 
 /**
  * Start a SHAKE-256 hashing operation.
@@ -144,6 +145,9 @@ void kmac_shake256_squeeze_start(void);
  */
 OT_WARN_UNUSED_RESULT
 rom_error_t kmac_shake256_squeeze_end(uint32_t *out, size_t outlen);
+
+rom_error_t kmac_shake256_squeeze(uint32_t *out, size_t outlen);
+rom_error_t kmac_shake256_end(void) ;
 
 /**
  * Load an unmasked software key into KMAC.

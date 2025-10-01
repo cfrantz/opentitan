@@ -1,0 +1,60 @@
+package(default_visibility = ["//visibility:public"])
+
+alias(
+    name = "shake",
+    actual = select({
+        "//rules:opentitan_platform": "//sw/device/examples/mldsa/fw:shake",
+        "//conditions:default": "//sw/device/examples/mldsa/ossl:sha3",
+
+    }),
+)
+alias(
+    name = "rand",
+    actual = select({
+        "//rules:opentitan_platform": "//sw/device/examples/mldsa/fw:rand",
+        "//conditions:default": "//sw/device/examples/mldsa/ossl:rand",
+    }),
+)
+
+cc_library(
+    name = "ml_dsa_87",
+    copts = [
+        "-Wno-implicit-int-conversion",
+        "-Wno-sign-conversion",
+    ],
+    srcs = [
+        "ntt.c",
+        "ntt.h",
+        "packing.c",
+        "packing.h",
+        "poly.c",
+        "poly.h",
+        "polyvec.c",
+        "polyvec.h",
+        "reduce.c",
+        "reduce.h",
+        "rounding.c",
+        "rounding.h",
+        "sign.c",
+        "sign.h",
+        "symmetric-shake.c",
+        "config.h",
+        "params.h",
+        "symmetric.h",
+    ],
+    hdrs = [
+        "api.h",
+    ],
+    deps = [
+        ":shake",
+        ":rand",
+    ],
+)
+
+cc_binary(
+    name = "demo",
+    srcs = ["demo.c"],
+    deps = [
+        ":ml_dsa_87",
+    ],
+)

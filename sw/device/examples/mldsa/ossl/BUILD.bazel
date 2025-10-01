@@ -1,0 +1,41 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "common",
+    hdrs = ["common.h"],
+)
+
+cc_library(
+    name = "rand",
+    hdrs = ["rand.h"],
+    srcs = ["rand.c"],
+    deps = [
+        ":common",
+    ],
+)
+
+cc_library(
+    name = "sha3",
+    srcs = [
+        "sha3.c",
+        "sha3_ops.h",
+        "ossl_sha3.c",
+        "ossl_helpers.h",
+        "ossl_helpers.c",
+    ],
+    local_defines = [
+        "OQS_USE_OPENSSL=1",
+        "OQS_USE_SHA3_OPENSSL=1",
+    ],
+    includes = ["."],
+    linkopts = [
+        "-lcrypto",
+    ],
+    hdrs = [
+        "fips202.h",
+        "sha3.h",
+    ],
+    deps = [
+        ":common",
+    ],
+)

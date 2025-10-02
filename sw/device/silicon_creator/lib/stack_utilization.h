@@ -17,10 +17,16 @@ extern "C" {
  */
 #ifdef STACK_UTILIZATION_CHECK
 void stack_utilization_print(void);
+void _stack_utilization_print(const uint32_t *_stack_start);
 #else
 #define stack_utilization_print() \
   do {                            \
   } while (0)
+
+#define _stack_utilization_print(_stack_start) \
+  do {                            \
+  } while (0)
+
 #endif
 
 #ifdef __cplusplus

@@ -8,7 +8,12 @@
 
 #ifdef STACK_UTILIZATION_CHECK
 void stack_utilization_print(void) {
-  extern uint32_t _stack_start[], _stack_end[];
+  extern uint32_t _stack_start[];
+  _stack_utilization_print(_stack_start);
+}
+
+void _stack_utilization_print(const uint32_t *_stack_start) {
+  extern uint32_t _stack_end[];
   // We configure a No-Access ePMP NA4 region at stack_start as a
   // stack guard.  We cannot access that word, so start the scan
   // after the stack guard.

@@ -1,0 +1,11 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "data",
+    hdrs = [
+        "foo_pk.h",
+        "foo_sk.h",
+        "message.h",
+        "signature.h",
+    ],
+)

@@ -1,0 +1,90 @@
+load(
+    "@lowrisc_opentitan//rules/opentitan:defs.bzl",
+    "EARLGREY_TEST_ENVS",
+    "fpga_params",
+    "opentitan_test",
+    "qemu_params",
+    "verilator_params",
+)
+
+package(default_visibility = ["//visibility:public"])
+
+opentitan_test(
+    name = "verify_bm",
+    copts = [
+        "-DPARAMS=sphincs-sha2-128s",
+        "-DNAMESPACE=SPX_sha2_128s_simple_",
+    ],
+    srcs = [
+        "verify_bm.c",
+        "//sw/device/silicon_owner/bare_metal:bare_metal_start",
+    ],
+    exec_env = {
+        "//hw/top_earlgrey:fpga_hyper310_rom_ext": None,
+        "@provisioning_exts//shared/exec_env:silicon_owner_gb_rom_ext": None,
+    },
+    linker_script = "//sw/device/silicon_owner/bare_metal:ld_slot_a",
+    manifest = "//sw/device/silicon_owner/bare_metal:manifest",
+    deps = [
+        "//sw/device/examples/slhdsa/data/sha2_128s_simple:data",
+        "//sw/device/examples/slhdsa/ref:sphincs_deterministic_sha2_128s_simple",
+        "//sw/device/silicon_creator/lib:dbg_print",
+        "//sw/device/lib/crt",
+        "//sw/device/silicon_creator/lib:manifest_def",
+        "//sw/device/silicon_creator/lib:stack_utilization",
+    ],
+
+
+)
+
+opentitan_test(
+    name = "sign_bm",
+    copts = [
+        "-DPARAMS=sphincs-sha2-128s",
+        "-DNAMESPACE=SPX_sha2_128s_simple_",
+    ],
+    srcs = [
+        "sign_bm.c",
+        "//sw/device/silicon_owner/bare_metal:bare_metal_start",
+    ],
+    exec_env = {
+        "//hw/top_earlgrey:fpga_hyper310_rom_ext": None,
+        "@provisioning_exts//shared/exec_env:silicon_owner_gb_rom_ext": None,
+    },
+    linker_script = "//sw/device/silicon_owner/bare_metal:ld_slot_a",
+    manifest = "//sw/device/silicon_owner/bare_metal:manifest",
+    deps = [
+        "//sw/device/examples/slhdsa/data/sha2_128s_simple:data",
+        "//sw/device/examples/slhdsa/ref:sphincs_deterministic_sha2_128s_simple",
+        "//sw/device/silicon_creator/lib:dbg_print",
+        "//sw/device/lib/crt",
+        "//sw/device/silicon_creator/lib:manifest_def",
+        "//sw/device/silicon_creator/lib:stack_utilization",
+    ],
+
+)
+
+opentitan_test(
+    name = "keygen_bm",
+    copts = [
+        "-DPARAMS=sphincs-sha2-128s",
+        "-DNAMESPACE=SPX_sha2_128s_simple_",
+    ],
+    srcs = [
+        "keygen_bm.c",
+        "//sw/device/silicon_owner/bare_metal:bare_metal_start",
+    ],
+    exec_env = {
+        "//hw/top_earlgrey:fpga_hyper310_rom_ext": None,
+        "@provisioning_exts//shared/exec_env:silicon_owner_gb_rom_ext": None,
+    },
+    linker_script = "//sw/device/silicon_owner/bare_metal:ld_slot_a",
+    manifest = "//sw/device/silicon_owner/bare_metal:manifest",
+    deps = [
+        "//sw/device/examples/slhdsa/ref:sphincs_deterministic_sha2_128s_simple",
+        "//sw/device/silicon_creator/lib:dbg_print",
+        "//sw/device/lib/crt",
+        "//sw/device/silicon_creator/lib:manifest_def",
+        "//sw/device/silicon_creator/lib:stack_utilization",
+    ],
+)

@@ -1,7 +1,7 @@
 #ifndef SPX_PARAMS_H
 #define SPX_PARAMS_H
 
-#define SPX_NAMESPACE(s) SPX_##s
+#define SPX_NAMESPACE(s) PASTE(NAMESPACE, s)
 
 /* Hash output length in bytes. */
 #define SPX_N 24

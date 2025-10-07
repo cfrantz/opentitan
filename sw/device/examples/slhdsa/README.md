@@ -120,6 +120,35 @@ a capable SHA2 accelerator is exteremly slow.
 
 | Operation | Mode | Time | Stack Usage |
 |-|-|-|-|
-| Keygen | SHA2-128s-simple | 31907 ms  | 3508 bytes |
-| Sign   | SHA2-128s-simple | 241217 ms  | 2836 bytes |
-| Verify | SHA2-128s-simple | 254 ms  | 2308 bytes |
+| Keygen | SHA2-128s-simple | 31.9 s | 3508 bytes |
+| Sign   | SHA2-128s-simple | 241 s  | 2836 bytes |
+| Verify | SHA2-128s-simple | 254 ms | 2308 bytes |
+
+### Reduced parameter sets
+
+The SLH-DSA `SHA2-128s-simple` signature size of 7856 bytes is rather large for
+embedded systems.  A [reduced paraemter set](https://csrc.nist.gov/csrc/media/Events/2024/fifth-pqc-standardization-conference/documents/papers/a-note-on-sphincs-plus-parameter-sets.pdf)
+has been proposed by `jadep` and `kste`.  The signature size of
+`SHA2-128s-simple-q20` requires "only" 3264 bytes.  As stated in the
+paper, the reduced parameter set requires significantly more time to
+perform keygen and signing operations.
+
+On the Earlgrey ASIC, the following times were observed:
+
+| Operation | Mode | Time | Stack Usage |
+|-|-|-|-|
+| Keygen | SHA2-128s-simple-q20 | 643 s  | 2440 bytes |
+| Sign   | SHA2-128s-simple-q20 | 2173 s  | 1624 bytes |
+| Verify | SHA2-128s-simple-q20 | 2.67 ms  | 1940 bytes |
+
+Even on a well equiped modern workstation (AMD Ryzen Threadripper PRO
+3995WX @ 1.7GHz), the `q20` parameter set takes significant time for
+the keygen and sign operations:
+
+| Operation | Mode | Time |
+|-|-|-|
+| Keygen | SHA2-128s-simple-q20 | 42 s  |
+| Sign   | SHA2-128s-simple-q20 | 129 s  |
+| Verify | SHA2-128s-simple-q20 | 23 ms  |
+
+> NOTE: The `q20` mode was enabled by adding `--copt=-DSPX_Q20` the the various build and test commands above.

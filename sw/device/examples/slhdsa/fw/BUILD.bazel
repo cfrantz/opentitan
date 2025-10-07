@@ -27,6 +27,7 @@ opentitan_test(
     manifest = "//sw/device/silicon_owner/bare_metal:manifest",
     deps = [
         "//sw/device/examples/slhdsa/data/sha2_128s_simple:data",
+        "//sw/device/examples/slhdsa/data/sha2_128s_simple_q20:data",
         #"//sw/device/examples/slhdsa/ref:sphincs_deterministic_sha2_128s_simple",
         #"//sw/device/examples/slhdsa/ref:sphincs_hw_deterministic_sha2_128s_simple",
         "//sw/device/examples/slhdsa/ref:sphincs_hw_earlgrey_sha2_128s_simple",
@@ -57,6 +58,7 @@ opentitan_test(
     manifest = "//sw/device/silicon_owner/bare_metal:manifest",
     deps = [
         "//sw/device/examples/slhdsa/data/sha2_128s_simple:data",
+        "//sw/device/examples/slhdsa/data/sha2_128s_simple_q20:data",
         #"//sw/device/examples/slhdsa/ref:sphincs_deterministic_sha2_128s_simple",
         #"//sw/device/examples/slhdsa/ref:sphincs_hw_deterministic_sha2_128s_simple",
         "//sw/device/examples/slhdsa/ref:sphincs_hw_earlgrey_sha2_128s_simple",

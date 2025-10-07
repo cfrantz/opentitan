@@ -31,10 +31,11 @@ static void base64_encode(const uint8_t *data, int32_t len) {
 uint8_t sk[CRYPTO_SECRETKEYBYTES];
 uint8_t pk[CRYPTO_PUBLICKEYBYTES];
 void keygen(void) {
-  uint32_t start = ibex_mcycle32();
+  uint64_t start = ibex_mcycle();
   int result = SPX_sha2_128s_simple_crypto_sign_keypair(pk, sk);
-  uint32_t end = ibex_mcycle32();
-  dbg_printf("Keygen result: %d in %u cycles\r\n", result, end-start);
+  uint64_t end = ibex_mcycle();
+  uint64_t v = end - start;
+  dbg_printf("Keygen result: %d in %u (0x%x%x) cycles\r\n", result, (uint32_t)v, (uint32_t)(v>>32), (uint32_t)(v));
   if (result == 0) {
     dbg_printf("SecretKey:\r\n");
     base64_encode(sk, sizeof(sk));

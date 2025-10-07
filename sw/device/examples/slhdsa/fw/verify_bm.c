@@ -4,9 +4,15 @@
 
 #include "sw/device/examples/slhdsa/ref/api.h"
 
+#ifndef SPX_Q20
 #include "sw/device/examples/slhdsa/data/sha2_128s_simple/foo_pk.h"
 #include "sw/device/examples/slhdsa/data/sha2_128s_simple/message.h"
 #include "sw/device/examples/slhdsa/data/sha2_128s_simple/signature.h"
+#else
+#include "sw/device/examples/slhdsa/data/sha2_128s_simple_q20/foo_pk.h"
+#include "sw/device/examples/slhdsa/data/sha2_128s_simple_q20/message.h"
+#include "sw/device/examples/slhdsa/data/sha2_128s_simple_q20/signature.h"
+#endif
 
 /*
  * Code size estimate for verify:

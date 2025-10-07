@@ -3,6 +3,7 @@
 
 #define SPX_NAMESPACE(s) PASTE(NAMESPACE, s)
 
+#ifndef SPX_Q20
 /* Hash output length in bytes. */
 #define SPX_N 16
 /* Height of the hypertree. */
@@ -14,6 +15,25 @@
 #define SPX_FORS_TREES 14
 /* Winternitz parameter, */
 #define SPX_WOTS_W 16
+
+#else
+
+// "q20" parameter set:
+// https://csrc.nist.gov/csrc/media/Events/2024/fifth-pqc-standardization-conference/documents/papers/a-note-on-sphincs-plus-parameter-sets.pdf
+
+/* Hash output length in bytes. */
+#define SPX_N 16
+/* Height of the hypertree. */
+#define SPX_FULL_HEIGHT 18
+/* Number of subtree layer. */
+#define SPX_D 1
+/* FORS tree dimensions. */
+#define SPX_FORS_HEIGHT 24
+#define SPX_FORS_TREES 6
+/* Winternitz parameter, */
+#define SPX_WOTS_W 16
+
+#endif
 
 /* The hash function is defined by linking a different hash.c file, as opposed
    to setting a #define constant. */

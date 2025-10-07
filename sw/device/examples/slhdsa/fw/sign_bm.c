@@ -4,9 +4,15 @@
 
 #include "sw/device/examples/slhdsa/ref/api.h"
 
+#ifndef SPX_Q20
 #include "sw/device/examples/slhdsa/data/sha2_128s_simple/foo_sk.h"
 #include "sw/device/examples/slhdsa/data/sha2_128s_simple/message.h"
 #include "sw/device/examples/slhdsa/data/sha2_128s_simple/signature.h"
+#else
+#include "sw/device/examples/slhdsa/data/sha2_128s_simple_q20/foo_sk.h"
+#include "sw/device/examples/slhdsa/data/sha2_128s_simple_q20/message.h"
+#include "sw/device/examples/slhdsa/data/sha2_128s_simple_q20/signature.h"
+#endif
 
 
 const char kBase64[] =
@@ -39,8 +45,7 @@ int sign_test(void) {
   int result = SPX_sha2_128s_simple_crypto_sign_signature(sig, &siglen, message_txt, sizeof(message_txt), foo_sk);
   uint64_t end = ibex_mcycle();
   uint64_t v = end-start;
-  dbg_printf("Sign result: %d in %u cycles\r\n", result, (uint32_t)v);
-  //dbg_printf("Sign result: %d in %x %x cycles\r\n", result, (uint32_t)(v>>32), (uint32_t)v);
+  dbg_printf("Keygen result: %d in %u (0x%x%x) cycles\r\n", result, (uint32_t)v, (uint32_t)(v>>32), (uint32_t)(v));
   base64_encode(sig, sizeof(sig));
   return result;
 }

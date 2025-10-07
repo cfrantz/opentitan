@@ -13,7 +13,7 @@ void randombytes(unsigned char *x, unsigned long xlen) {
     xlen -= sizeof(uint32_t);
   }
   while(xlen > 0) {
-    *x = rnd_uint32();
+    *x = (uint8_t)rnd_uint32();
     x += 1;
     xlen -= 1;
   }

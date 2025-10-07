@@ -27,7 +27,9 @@ opentitan_test(
     manifest = "//sw/device/silicon_owner/bare_metal:manifest",
     deps = [
         "//sw/device/examples/slhdsa/data/sha2_128s_simple:data",
-        "//sw/device/examples/slhdsa/ref:sphincs_deterministic_sha2_128s_simple",
+        #"//sw/device/examples/slhdsa/ref:sphincs_deterministic_sha2_128s_simple",
+        #"//sw/device/examples/slhdsa/ref:sphincs_hw_deterministic_sha2_128s_simple",
+        "//sw/device/examples/slhdsa/ref:sphincs_hw_earlgrey_sha2_128s_simple",
         "//sw/device/silicon_creator/lib:dbg_print",
         "//sw/device/lib/crt",
         "//sw/device/silicon_creator/lib:manifest_def",
@@ -55,7 +57,9 @@ opentitan_test(
     manifest = "//sw/device/silicon_owner/bare_metal:manifest",
     deps = [
         "//sw/device/examples/slhdsa/data/sha2_128s_simple:data",
-        "//sw/device/examples/slhdsa/ref:sphincs_deterministic_sha2_128s_simple",
+        #"//sw/device/examples/slhdsa/ref:sphincs_deterministic_sha2_128s_simple",
+        #"//sw/device/examples/slhdsa/ref:sphincs_hw_deterministic_sha2_128s_simple",
+        "//sw/device/examples/slhdsa/ref:sphincs_hw_earlgrey_sha2_128s_simple",
         "//sw/device/silicon_creator/lib:dbg_print",
         "//sw/device/lib/crt",
         "//sw/device/silicon_creator/lib:manifest_def",
@@ -81,7 +85,9 @@ opentitan_test(
     linker_script = "//sw/device/silicon_owner/bare_metal:ld_slot_a",
     manifest = "//sw/device/silicon_owner/bare_metal:manifest",
     deps = [
-        "//sw/device/examples/slhdsa/ref:sphincs_deterministic_sha2_128s_simple",
+        #"//sw/device/examples/slhdsa/ref:sphincs_deterministic_sha2_128s_simple",
+        #"//sw/device/examples/slhdsa/ref:sphincs_hw_deterministic_sha2_128s_simple",
+        "//sw/device/examples/slhdsa/ref:sphincs_hw_earlgrey_sha2_128s_simple",
         "//sw/device/silicon_creator/lib:dbg_print",
         "//sw/device/lib/crt",
         "//sw/device/silicon_creator/lib:manifest_def",

@@ -7,6 +7,10 @@
 #include "hash.h"
 #include "sha2.h"
 
+#ifdef EARLGREY
+#include "sw/device/silicon_creator/lib/drivers/hmac.h"
+#endif
+
 #if SPX_N >= 24
 #define SPX_SHAX_OUTPUT_BYTES SPX_SHA512_OUTPUT_BYTES
 #define SPX_SHAX_BLOCK_BYTES SPX_SHA512_BLOCK_BYTES
@@ -25,12 +29,30 @@
 #define mgf1_X mgf1_256
 #endif
 
+enum {
+  kSpxNWords = SPX_N / sizeof(uint32_t),
+  kSpxSha2BlockNumBytes = 512 / 8,
+  kSpxSha2BlockNumWords = kSpxSha2BlockNumBytes / sizeof(uint32_t),
+};
+
 
 /* For SHA, there is no immediate reason to initialize at the start,
    so this function is an empty operation. */
 void initialize_hash_function(spx_ctx *ctx)
 {
+#ifndef EARLGREY
     seed_state(ctx);
+#else
+  static_assert(sizeof(ctx->state_seeded) == sizeof(hmac_context_t), "expected state_seeded to be the same size as hmac_context_t");
+  hmac_sha256_configure(/*big_endian_digest=*/true);
+  // Save state for the first part of `thash`: public key seed + padding.
+  hmac_sha256_start();
+  hmac_sha256_update(ctx->pub_seed, sizeof(ctx->pub_seed));
+  uint32_t padding[kSpxSha2BlockNumWords - kSpxNWords];
+  memset(padding, 0, sizeof(padding));
+  hmac_sha256_update(padding, sizeof(padding));
+  hmac_sha256_save((hmac_context_t*)ctx->state_seeded);
+#endif
 }
 
 /*
@@ -39,6 +61,7 @@ void initialize_hash_function(spx_ctx *ctx)
 void prf_addr(unsigned char *out, const spx_ctx *ctx,
               const uint32_t addr[8])
 {
+#ifndef EARLGREY
     uint8_t sha2_state[40];
     unsigned char buf[SPX_SHA256_ADDR_BYTES + SPX_N];
     unsigned char outbuf[SPX_SHA256_OUTPUT_BYTES];
@@ -53,6 +76,13 @@ void prf_addr(unsigned char *out, const spx_ctx *ctx,
     sha256_inc_finalize(outbuf, sha2_state, buf, SPX_SHA256_ADDR_BYTES + SPX_N);
 
     memcpy(out, outbuf, SPX_N);
+#else
+  hmac_sha256_restore((hmac_context_t*)ctx->state_seeded);
+  hmac_sha256_update((unsigned char *)addr, SPX_SHA256_ADDR_BYTES);
+  hmac_sha256_update(ctx->sk_seed, SPX_N);
+  hmac_sha256_process();
+  hmac_sha256_final_truncated((uint32_t*)out, SPX_N / sizeof(uint32_t));
+#endif
 }
 
 /**
@@ -71,7 +101,6 @@ void gen_message_random(unsigned char *R, const unsigned char *sk_prf,
     (void)ctx;
 
     unsigned char buf[SPX_SHAX_BLOCK_BYTES + SPX_SHAX_OUTPUT_BYTES];
-    uint8_t state[8 + SPX_SHAX_OUTPUT_BYTES];
     int i;
 
 #if SPX_N > SPX_SHAX_BLOCK_BYTES
@@ -84,25 +113,44 @@ void gen_message_random(unsigned char *R, const unsigned char *sk_prf,
     }
     memset(buf + SPX_N, 0x36, SPX_SHAX_BLOCK_BYTES - SPX_N);
 
+#ifndef EARLGREY
+    uint8_t state[8 + SPX_SHAX_OUTPUT_BYTES];
     shaX_inc_init(state);
     shaX_inc_blocks(state, buf, 1);
+#else
+  hmac_sha256_configure(/*big_endian_digest=*/true);
+  hmac_sha256_start();
+  hmac_sha256_update(buf, SPX_SHAX_BLOCK_BYTES);
+#endif
 
     memcpy(buf, optrand, SPX_N);
 
     /* If optrand + message cannot fill up an entire block */
     if (SPX_N + mlen < SPX_SHAX_BLOCK_BYTES) {
         memcpy(buf + SPX_N, m, mlen);
+#ifndef EARLGREY
         shaX_inc_finalize(buf + SPX_SHAX_BLOCK_BYTES, state,
                             buf, mlen + SPX_N);
+#else
+        hmac_sha256_update(buf, mlen+SPX_N);
+        hmac_sha256_process();
+        hmac_sha256_final((hmac_digest_t*)(buf + SPX_SHAX_BLOCK_BYTES));
+#endif
     }
     /* Otherwise first fill a block, so that finalize only uses the message */
     else {
         memcpy(buf + SPX_N, m, SPX_SHAX_BLOCK_BYTES - SPX_N);
-        shaX_inc_blocks(state, buf, 1);
-
         m += SPX_SHAX_BLOCK_BYTES - SPX_N;
         mlen -= SPX_SHAX_BLOCK_BYTES - SPX_N;
+#ifndef EARLGREY
+        shaX_inc_blocks(state, buf, 1);
         shaX_inc_finalize(buf + SPX_SHAX_BLOCK_BYTES, state, m, mlen);
+#else
+        hmac_sha256_update(buf, SPX_SHAX_BLOCK_BYTES);
+        hmac_sha256_update(m, mlen);
+        hmac_sha256_process();
+        hmac_sha256_final((hmac_digest_t*)(buf + SPX_SHAX_BLOCK_BYTES));
+#endif
     }
 
     for (i = 0; i < SPX_N; i++) {
@@ -110,8 +158,16 @@ void gen_message_random(unsigned char *R, const unsigned char *sk_prf,
     }
     memset(buf + SPX_N, 0x5c, SPX_SHAX_BLOCK_BYTES - SPX_N);
 
+#ifndef EARLGREY
     shaX(buf, buf, SPX_SHAX_BLOCK_BYTES + SPX_SHAX_OUTPUT_BYTES);
     memcpy(R, buf, SPX_N);
+#else
+    hmac_sha256_configure(/*big_endian_digest=*/true);
+    hmac_sha256_start();
+    hmac_sha256_update(buf, SPX_SHAX_BLOCK_BYTES + SPX_SHAX_OUTPUT_BYTES);
+    hmac_sha256_process();
+    hmac_sha256_final((hmac_digest_t*)R);
+#endif
 }
 
 /**
@@ -143,9 +199,14 @@ void hash_message(unsigned char *digest, uint64_t *tree, uint32_t *leaf_idx,
 
     unsigned char buf[SPX_DGST_BYTES];
     unsigned char *bufp = buf;
-    uint8_t state[8 + SPX_SHAX_OUTPUT_BYTES];
 
+#ifndef EARLGREY
+    uint8_t state[8 + SPX_SHAX_OUTPUT_BYTES];
     shaX_inc_init(state);
+#else
+  hmac_sha256_configure(/*big_endian_digest=*/true);
+  hmac_sha256_start();
+#endif
 
     // seed: SHA-X(R ‖ PK.seed ‖ PK.root ‖ M)
     memcpy(inbuf, R, SPX_N);
@@ -154,17 +215,30 @@ void hash_message(unsigned char *digest, uint64_t *tree, uint32_t *leaf_idx,
     /* If R + pk + message cannot fill up an entire block */
     if (SPX_N + SPX_PK_BYTES + mlen < SPX_INBLOCKS * SPX_SHAX_BLOCK_BYTES) {
         memcpy(inbuf + SPX_N + SPX_PK_BYTES, m, mlen);
+#ifndef EARLGREY
         shaX_inc_finalize(seed + 2*SPX_N, state, inbuf, SPX_N + SPX_PK_BYTES + mlen);
+#else
+        hmac_sha256_update(inbuf, SPX_N + SPX_PK_BYTES + mlen);
+        hmac_sha256_process();
+        hmac_sha256_final((hmac_digest_t*)(seed+2*SPX_N));
+#endif
     }
     /* Otherwise first fill a block, so that finalize only uses the message */
     else {
         memcpy(inbuf + SPX_N + SPX_PK_BYTES, m,
                SPX_INBLOCKS * SPX_SHAX_BLOCK_BYTES - SPX_N - SPX_PK_BYTES);
-        shaX_inc_blocks(state, inbuf, SPX_INBLOCKS);
 
         m += SPX_INBLOCKS * SPX_SHAX_BLOCK_BYTES - SPX_N - SPX_PK_BYTES;
         mlen -= SPX_INBLOCKS * SPX_SHAX_BLOCK_BYTES - SPX_N - SPX_PK_BYTES;
+#ifndef EARLGREY
+        shaX_inc_blocks(state, inbuf, SPX_INBLOCKS);
         shaX_inc_finalize(seed + 2*SPX_N, state, m, mlen);
+#else
+        hmac_sha256_update(inbuf, SPX_INBLOCKS * 64);
+        hmac_sha256_update(m, mlen);
+        hmac_sha256_process();
+        hmac_sha256_final((hmac_digest_t*)(seed+2*SPX_N));
+#endif
     }
 
     // H_msg: MGF1-SHA-X(R ‖ PK.seed ‖ seed)

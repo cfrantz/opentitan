@@ -43,6 +43,17 @@ RNG_MODES = [
     "earlgrey",
 ]
 
+HARDWARE = {
+    "_hw": {
+        "define": "EARLGREY=1",
+        "deps": [ "//sw/device/silicon_creator/lib/drivers:hmac" ],
+    },
+    "": {
+        "define": "SOFTWARE=1",
+        "deps": [],
+    },
+}
+
 cc_library(
     name = "random",
     srcs = ["randombytes.c"],
@@ -70,7 +81,7 @@ cc_library(
 
 [
     cc_library(
-        name = "sphincs_{}_{}_{}{}_{}".format(rng_mode, hash_alg, level, letter, thash),
+        name = "sphincs{}_{}_{}_{}{}_{}".format(hardware, rng_mode, hash_alg, level, letter, thash),
         srcs = [
             "address.c",
             "fors.c",
@@ -107,15 +118,19 @@ cc_library(
             "-DNAMESPACE=SPX_{}_{}{}_{}_".format(hash_alg, level, letter, thash),
             "-Wno-shorten-64-to-32",
         ],
+        defines = [
+            hwdef["define"],
+        ],
         deps = [
             ":{}".format(rng_mode),
-        ],
+        ] + hwdef["deps"],
     )
     for rng_mode in RNG_MODES
     for hash_alg, hash_c in HASHES
     for level in LEVELS
     for letter in LETTERS
     for thash in THASHES
+    for hardware, hwdef in HARDWARE.items()
 ]
 
 cc_binary(

@@ -7,6 +7,11 @@
 #include "utils.h"
 #include "sha2.h"
 
+#ifdef EARLGREY
+#include "sw/device/silicon_creator/lib/drivers/hmac.h"
+#endif
+
+
 #if SPX_SHA512
 static void thash_512(unsigned char *out, const unsigned char *in, unsigned int inblocks,
            const spx_ctx *ctx, uint32_t addr[8]);
@@ -20,11 +25,18 @@ void thash(unsigned char *out, const unsigned char *in, unsigned int inblocks,
 {
 #if SPX_SHA512
     if (inblocks > 1) {
-	thash_512(out, in, inblocks, ctx, addr);
+        thash_512(out, in, inblocks, ctx, addr);
         return;
     }
 #endif
 
+#ifdef EARLGREY
+  hmac_sha256_restore((hmac_context_t*)ctx->state_seeded);
+  hmac_sha256_update((unsigned char *)addr, SPX_SHA256_ADDR_BYTES);
+  hmac_sha256_update(in, inblocks * SPX_N);
+  hmac_sha256_process();
+  hmac_sha256_final_truncated((uint32_t*)out, SPX_N / sizeof(uint32_t));
+#else
     unsigned char outbuf[SPX_SHA256_OUTPUT_BYTES];
     uint8_t sha2_state[40];
     SPX_VLA(uint8_t, buf, SPX_SHA256_ADDR_BYTES + inblocks*SPX_N);
@@ -37,6 +49,7 @@ void thash(unsigned char *out, const unsigned char *in, unsigned int inblocks,
 
     sha256_inc_finalize(outbuf, sha2_state, buf, SPX_SHA256_ADDR_BYTES + inblocks*SPX_N);
     memcpy(out, outbuf, SPX_N);
+#endif
 }
 
 #if SPX_SHA512

@@ -82,6 +82,40 @@ cc_library(
 )
 
 cc_library(
+    name = "dice",
+    srcs = ["dice.c"],
+    hdrs = ["//sw/device/lib/crypto/include:dice.h"],
+    target_compatible_with = [OPENTITAN_CPU],
+    deps = [
+        ":status",
+        ":integrity",
+        "//sw/device/lib/base:macros",
+        "//sw/device/lib/base:memory",
+        "//sw/device/silicon_creator/lib:dbg_print",
+        "//sw/device/lib/crypto/drivers:keymgr",
+        "//sw/device/lib/crypto/drivers:otbn",
+        "//sw/otbn/crypto:boot",
+    ],
+)
+
+opentitan_test(
+    name = "dice_functest",
+    srcs = ["dice_functest.c"],
+    exec_env = EARLGREY_TEST_ENVS,
+    deps = [
+        ":dice",
+        ":status",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/crypto/drivers:entropy",
+        "//sw/device/lib/testing:keymgr_testutils",
+        "//sw/device/lib/testing:hexstr",
+        "//sw/device/lib/crypto/impl/ecc:p256",
+        "//sw/device/silicon_creator/lib/base:util",
+    ],
+)
+
+cc_library(
     name = "ecc_p256",
     srcs = ["ecc_p256.c"],
     hdrs = ["//sw/device/lib/crypto/include:ecc_p256.h"],

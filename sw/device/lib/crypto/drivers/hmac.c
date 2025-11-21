@@ -380,12 +380,14 @@ static status_t msg_fifo_write(const uint8_t *message, size_t message_len) {
  */
 static status_t tmp_avoid_hw_hang(hmac_ctx_t *ctx) {
   // Insert a delay
-  ibex_timeout_t timeout;
-  timeout.cycles = kHmacTmpDelay;
-  timeout.start = ibex_mcycle_read();
-  while (!ibex_timeout_check(&timeout)) {
-    // NULL statement
-  }
+  //ibex_timeout_t timeout;
+  //timeout.cycles = kHmacTmpDelay;
+  //timeout.start = ibex_mcycle_read();
+  //while (!ibex_timeout_check(&timeout)) {
+  //  // NULL statement
+  //}
+  uint32_t d = kHmacTmpDelay;
+  while(launder32(d)) { d--; }
 
   // Save current context as it is updated after each block even if stop is not
   // triggered

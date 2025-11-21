@@ -16,6 +16,7 @@ ot_static_library(
         "//sw/device/lib/crypto/impl:aes",
         "//sw/device/lib/crypto/impl:aes_gcm",
         "//sw/device/lib/crypto/impl:drbg",
+        "//sw/device/lib/crypto/impl:dice",
         "//sw/device/lib/crypto/impl:ecc_p256",
         "//sw/device/lib/crypto/impl:ecc_p384",
         "//sw/device/lib/crypto/impl:ed25519",

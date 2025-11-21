@@ -100,6 +100,9 @@ status_t keymgr_generate_key_kmac(
 OT_WARN_UNUSED_RESULT
 status_t keymgr_generate_key_otbn(
     const keymgr_diversification_t diversification);
+OT_WARN_UNUSED_RESULT
+status_t keymgr_generate_key_otbn_ex(
+    const keymgr_diversification_t diversification, bool attestation);
 
 /**
  * Clear the sideloaded AES key.

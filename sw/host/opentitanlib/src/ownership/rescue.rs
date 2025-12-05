@@ -29,6 +29,13 @@ with_unknown! {
         Gpio = 3,
     }
 
+    pub enum DriveStrength: u8 [default = Self::Voltage3v3] {
+        Voltage3v3 = 0,
+        Voltage1v8 = 1,
+        Voltage1v2 = 2,
+        VoltageUnknown = 3,
+    }
+
     pub enum CommandTag: u32 [default = Self::Unknown] {
         Unknown = 0,
         Empty = BootSvcKind::EmptyRequest.0,
@@ -76,6 +83,9 @@ pub struct OwnerRescueConfig {
     /// The GPIO trigger value (only if trigger is GPIO).
     #[serde(default)]
     pub gpio_value: bool,
+    /// Set the SPI device drive strength (only if protocol is SpiDfu).
+    #[serde(default)]
+    pub drive_strength: DriveStrength,
     /// Enter rescue mode if the reboot reason is watchdog timeout.
     #[serde(default)]
     pub enter_on_watchdog: bool,
@@ -98,6 +108,7 @@ impl Default for OwnerRescueConfig {
             protocol: RescueProtocol::default(),
             gpio_pull_en: false,
             gpio_value: false,
+            drive_strength: DriveStrength::default(),
             enter_on_watchdog: false,
             enter_on_failure: false,
             timeout: 0,
@@ -115,6 +126,8 @@ impl OwnerRescueConfig {
     const MISC_GPIO_WATCHDOG_TIMEOUT_EN_BIT: u8 = 0x80;
     const MISC_GPIO_PULL_BIT: u8 = 0x02;
     const MISC_GPIO_VALUE_BIT: u8 = 0x01;
+    const MISC_GPIO_DRIVE_STRENGTH_SHIFT: u8 = 2;
+    const MISC_GPIO_DRIVE_STRENGTH_MASK: u8 = 3;
     const ENTER_ON_FAIL_BIT: u8 = 0x80;
     const TIMEOUT_MASK: u8 = 0x7f;
     const TRIGGER_SHIFT: u8 = 6;
@@ -140,6 +153,10 @@ impl OwnerRescueConfig {
             protocol,
             gpio_pull_en: gpio & Self::MISC_GPIO_PULL_BIT != 0,
             gpio_value: gpio & Self::MISC_GPIO_VALUE_BIT != 0,
+            drive_strength: DriveStrength(
+                (gpio >> Self::MISC_GPIO_DRIVE_STRENGTH_SHIFT)
+                    & Self::MISC_GPIO_DRIVE_STRENGTH_MASK,
+            ),
             enter_on_watchdog: gpio & Self::MISC_GPIO_WATCHDOG_TIMEOUT_EN_BIT != 0,
             enter_on_failure: timeout & Self::ENTER_ON_FAIL_BIT != 0,
             timeout: timeout & Self::TIMEOUT_MASK,
@@ -171,7 +188,7 @@ impl OwnerRescueConfig {
                 Self::MISC_GPIO_VALUE_BIT
             } else {
                 0
-            },
+            } | u8::from(self.drive_strength) << Self::MISC_GPIO_DRIVE_STRENGTH_SHIFT,
         )?;
         dest.write_u8(
             self.timeout & Self::TIMEOUT_MASK
@@ -241,6 +258,7 @@ mod test {
   trigger_index: 0,
   gpio_pull_en: false,
   gpio_value: false,
+  drive_strength: "Voltage3v3",
   enter_on_watchdog: true,
   enter_on_failure: false,
   timeout: 0,

@@ -594,6 +594,7 @@ r#"00000000: 4f 57 4e 52 00 08 00 00 00 00 00 00 4c 4e 45 58  OWNR........LNEX
         trigger_index: 0,
         gpio_pull_en: false,
         gpio_value: false,
+        drive_strength: "Voltage3v3",
         enter_on_watchdog: false,
         enter_on_failure: false,
         timeout: 0,

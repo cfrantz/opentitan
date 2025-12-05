@@ -23,6 +23,14 @@
 
 const uint32_t rescue_type = kRescueProtocolSpiDfu;
 
+const static uint8_t drive_strengths[4] = {
+    // TODO: fill in strength numbers from testing and characterization.
+    0x00,  // DriveStrength_3v3
+    0x00,  // DriveStrength_1v8
+    0x00,  // DriveStrength_1v2
+    0x00,  // DriveStrength_Unknown
+};
+
 enum {
   /**
    * Base address of the spi_device registers.
@@ -76,6 +84,13 @@ void dfu_transport_result(dfu_ctx_t *ctx, rom_error_t result) {
   spi_device_flash_status_clear();
 }
 
+OT_WEAK
+void rescue_spi_set_strength(const owner_rescue_config_t *config) {
+  uint8_t strength =
+      bitfield_field32_read(config->gpio, RESCUE_MISC_GPIO_STRENGTH);
+  spi_device_set_strength(strength);
+}
+
 rom_error_t rescue_protocol(boot_data_t *bootdata, boot_log_t *boot_log,
                             const owner_rescue_config_t *config) {
   dfu_ctx_t ctx = {
@@ -88,6 +103,7 @@ rom_error_t rescue_protocol(boot_data_t *bootdata, boot_log_t *boot_log,
       /*log2_density=*/kRescueDensity, &kRescueSfdpTable,
       sizeof(kRescueSfdpTable));
   spi_device_enable_mailbox(kMailboxAddress);
+  rescue_spi_set_strength(config);
 
   spi_device_cmd_t cmd;
   uint32_t length;

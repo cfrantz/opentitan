@@ -402,6 +402,13 @@ void spi_device_enable_mailbox(uint32_t address);
 void spi_device_copy_to_egress(uint32_t egress_offset, const void *data,
                                size_t len);
 
+/**
+ * Sets the slew rate and drive strength of the SPI device pads.
+ *
+ * @param slew_rate_strength The slew rate and drive strength.
+ */
+void spi_device_set_strength(uint8_t slew_rate_strength);
+
 #ifdef __cplusplus
 }
 #endif

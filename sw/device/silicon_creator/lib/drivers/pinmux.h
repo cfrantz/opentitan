@@ -82,6 +82,13 @@ bool pinmux_read_gpio(uint32_t gpio);
  */
 void pinmux_init_usb(void);
 
+/**
+ * Set the slew rate and drive strength of a direct pad.
+ *
+ * @param dio_pad The direct pad to modify.
+ * @param slew_rate_strength The slew_rate and drive strength.
+ */
+void pinmux_direct_pad_strength(uint32_t dio_pad, uint8_t slew_rate_strength);
 #ifdef __cplusplus
 }
 #endif

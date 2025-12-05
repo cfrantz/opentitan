@@ -8,6 +8,7 @@
 #include "sw/device/lib/base/bitfield.h"
 #include "sw/device/lib/base/memory.h"
 #include "sw/device/silicon_creator/lib/drivers/lifecycle.h"
+#include "sw/device/silicon_creator/lib/drivers/pinmux.h"
 #include "sw/device/silicon_creator/lib/drivers/spi_device_bfpt.h"
 #include "sw/device/silicon_creator/lib/error.h"
 
@@ -707,4 +708,19 @@ void spi_device_copy_to_egress(uint32_t egress_offset, const void *data,
     }
     *dst = val;
   }
+}
+
+void spi_device_set_strength(uint8_t slew_rate_strength) {
+  pinmux_direct_pad_strength(kTopEarlgreyDirectPadsSpiDeviceSd0,
+                             slew_rate_strength);
+  pinmux_direct_pad_strength(kTopEarlgreyDirectPadsSpiDeviceSd1,
+                             slew_rate_strength);
+  pinmux_direct_pad_strength(kTopEarlgreyDirectPadsSpiDeviceSd2,
+                             slew_rate_strength);
+  pinmux_direct_pad_strength(kTopEarlgreyDirectPadsSpiDeviceSd3,
+                             slew_rate_strength);
+  pinmux_direct_pad_strength(kTopEarlgreyDirectPadsSpiDeviceSck,
+                             slew_rate_strength);
+  pinmux_direct_pad_strength(kTopEarlgreyDirectPadsSpiDeviceCsb,
+                             slew_rate_strength);
 }

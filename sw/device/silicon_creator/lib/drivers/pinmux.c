@@ -220,3 +220,19 @@ bool pinmux_read_gpio(uint32_t gpio) {
       abs_mmio_read32(TOP_EARLGREY_GPIO_BASE_ADDR + GPIO_DATA_IN_REG_OFFSET);
   return bitfield_bit32_read(val, gpio);
 }
+
+// We define a "slew rate and drive strength" field to avoid a bunch of
+// unnecessary bit shifting and masking.
+#define SLEW_RATE_DRIVE_STRENGTH      \
+  ((bitfield_field32_t){.mask = 0xFF, \
+                        .index = PINMUX_DIO_PAD_ATTR_0_SLEW_RATE_0_OFFSET})
+void pinmux_direct_pad_strength(uint32_t dio_pad, uint8_t slew_rate_strength) {
+  uint32_t val =
+      abs_mmio_read32(TOP_EARLGREY_GPIO_BASE_ADDR +
+                      PINMUX_DIO_PAD_ATTR_0_REG_OFFSET + dio_pad * 4);
+  val =
+      bitfield_field32_write(val, SLEW_RATE_DRIVE_STRENGTH, slew_rate_strength);
+  abs_mmio_write32(TOP_EARLGREY_GPIO_BASE_ADDR +
+                       PINMUX_DIO_PAD_ATTR_0_REG_OFFSET + dio_pad * 4,
+                   val);
+}

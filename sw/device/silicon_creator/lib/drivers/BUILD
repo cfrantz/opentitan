@@ -846,6 +846,7 @@ dual_cc_library(
             "//hw/top_earlgrey/ip_autogen/flash_ctrl:flash_ctrl_c_regs",
             "//hw/ip/spi_device/data:spi_device_c_regs",
             "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+            "//sw/device/silicon_creator/lib/drivers:pinmux",
         ],
         host = [
             "//sw/device/lib/base:global_mock",

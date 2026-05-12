@@ -347,11 +347,13 @@ hooks.repo(
     name = "provisioning_exts",
     dummy = "@lowrisc_opentitan//:sw/device/silicon_creator/manuf/extensions",
     env = "PROV_EXTS_DIR",
+    extra = "extras.json",
 )
 use_repo(
     hooks,
     "manufacturer_test_hooks",
     "provisioning_exts",
+    "provisioning_exts_extra",
     "secure_manufacturer_test_hooks",
 )
 

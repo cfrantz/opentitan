@@ -95,8 +95,24 @@ def resolve_runfile(path):
         corrected_path = path[len("external/"):]
     else:
         corrected_path = os.path.join(REPO, path)
+    resolved = _runfiles.Rlocation(os.path.normpath(corrected_path))
 
-    resolved = _runfiles.Rlocation(corrected_path)
     if resolved is None or not os.path.exists(resolved):
+        if os.path.exists(path):
+            return os.path.abspath(path)
+        if path.startswith("external/"):
+            parts = path.split("/")
+            if len(parts) > 2:
+                apparent_name = parts[1]
+                rest = parts[2:]
+                if os.path.exists("external"):
+                    for d in os.listdir("external"):
+                        if (d == apparent_name or
+                                d.endswith("+" + apparent_name) or
+                                d.startswith(apparent_name + "+") or
+                                "+" + apparent_name + "+" in d):
+                            candidate = os.path.join("external", d, *rest)
+                            if os.path.exists(candidate):
+                                return os.path.abspath(candidate)
         raise ValueError(f"Could not find runfile: {path}")
     return resolved

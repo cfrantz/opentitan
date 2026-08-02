@@ -213,7 +213,40 @@ static void invalid_sigs_test() {
   }
 }
 
+static void hex_decode(const char* hex, uint8_t* bin) {
+  while (*hex) {
+    char h = *hex++;
+    char l = *hex++;
+    *bin++ = ((h >= 'a' ? h - 'a' + 10 : (h >= 'A' ? h - 'A' + 10 : h - '0')) << 4) |
+             (l >= 'a' ? l - 'a' + 10 : (l >= 'A' ? l - 'A' + 10 : l - '0'));
+  }
+}
+
+static void nist_cavp_test() {
+  const char* qx_hex = "B7E08AFDFE94BAD3F1DC8C734798BA1C62B3A0AD1E9EA2A38201CD0889BC7A19";
+  const char* qy_hex = "3603F747959DBF7A4BB226E41928729063ADC7AE43529E61B563BBC606CC5E09";
+  const char* r_hex = "2B42F576D07F4165FF65D1F3B1500F81E44C316F1F0B3EF57325B69ACA46104F";
+  const char* s_hex = "DC42C2122D6392CD3E3A993A89502A8198C1886FE69D262C4B329BDB6B63FAF1";
+  const char* msg_hex = "A41A41A12A799548211C410C65D8133AFDE34D28BDD542E4B680CF2899C8A8C4";
+
+  uint8_t bin[32];
+  p256_int qx, qy, r, s, msg;
+
+  hex_decode(qx_hex, bin); p256_from_bin(bin, &qx);
+  hex_decode(qy_hex, bin); p256_from_bin(bin, &qy);
+  hex_decode(r_hex, bin); p256_from_bin(bin, &r);
+  hex_decode(s_hex, bin); p256_from_bin(bin, &s);
+  hex_decode(msg_hex, bin); p256_from_bin(bin, &msg);
+
+  if (!p256_ecdsa_verify(&qx, &qy, &msg, &r, &s)) {
+    printf("nist_cavp_test(): verification failed!\n");
+    exit(1);
+  }
+  printf("P-256 NIST CAVP test vector verified successfully.\n");
+}
+
 int main(int argc, char* argv[]) {
+  nist_cavp_test();
   random_sigs_test();
   invalid_sigs_test();
   return 0;

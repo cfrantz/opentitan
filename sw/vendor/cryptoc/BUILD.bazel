@@ -1,0 +1,84 @@
+# BUILD.bazel for cryptoc library
+
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+
+cc_library(
+    name = "cryptoc",
+    srcs = [
+        "hmac.c",
+        "p256.c",
+        "p256_ec.c",
+        "p256_ecdsa.c",
+        "p256_prng.c",
+        "p384.c",
+        "p384_ec.c",
+        "p384_ecdsa.c",
+        "sha.c",
+        "sha256.c",
+        "sha384.c",
+        "sha512.c",
+        "util.c",
+    ],
+    hdrs = [
+        "include/cryptoc/hash-internal.h",
+        "include/cryptoc/hmac.h",
+        "include/cryptoc/p256.h",
+        "include/cryptoc/p256_ecdsa.h",
+        "include/cryptoc/p256_prng.h",
+        "include/cryptoc/p384.h",
+        "include/cryptoc/p384_ecdsa.h",
+        "include/cryptoc/sha.h",
+        "include/cryptoc/sha256.h",
+        "include/cryptoc/sha384.h",
+        "include/cryptoc/sha512.h",
+        "include/cryptoc/util.h",
+    ],
+    includes = ["include"],
+    copts = [
+        "-Wall",
+        "-Werror",
+    ],
+    defines = [
+        "THIRD_PARTY",
+        "SHA512_SUPPORT",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+cc_test(
+    name = "p256_unittest",
+    srcs = ["p256_unittest.c"],
+    deps = [":cryptoc"],
+)
+
+cc_test(
+    name = "p256_prng_unittest",
+    srcs = ["p256_prng_unittest.c"],
+    deps = [":cryptoc"],
+)
+
+cc_test(
+    name = "p256_ecdsa_unittest",
+    srcs = ["p256_ecdsa_unittest.c"],
+    linkopts = ["-lcrypto"],
+    deps = [":cryptoc"],
+)
+
+cc_test(
+    name = "p384_unittest",
+    srcs = ["p384_unittest.c"],
+    deps = [":cryptoc"],
+)
+
+cc_test(
+    name = "p384_ecdsa_unittest",
+    srcs = ["p384_ecdsa_unittest.c"],
+    linkopts = ["-lcrypto"],
+    deps = [":cryptoc"],
+)
+
+cc_test(
+    name = "sha2_testvectors",
+    srcs = ["sha2_testvectors.c"],
+    deps = [":cryptoc"],
+)

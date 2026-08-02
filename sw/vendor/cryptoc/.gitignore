@@ -1,0 +1,5 @@
+# Bazel outputs
+/bazel-*
+
+# Legacy Makefile build dir
+/build/

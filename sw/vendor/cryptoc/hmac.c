@@ -13,10 +13,8 @@
 // limitations under the License.
 #include "cryptoc/hmac.h"
 #include "cryptoc/util.h"
-
 #include <string.h>
 #include "cryptoc/sha.h"
-#include "cryptoc/md5.h"
 #include "cryptoc/sha256.h"
 
 static void HMAC_init(LITE_HMAC_CTX* ctx, const void* key, unsigned int len) {
